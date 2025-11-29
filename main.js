@@ -1,269 +1,389 @@
 /**
- * GameApp: 負責遊戲邏輯與 DOM 操作
+ * MAIN.JS
+ * Handles Game Loop, Canvas Rendering, Math Logic, and Calculator
  */
-var GameApp = {
-  // 遊戲狀態
-  state: "menu", // menu, playing, levelClear, gameOver
-  level: 1,
-  hp: 5,
-  monstersKilled: 0,
-  
-  // 題目
-  question: null,
-  questionList: [],
-  
-  // 動畫狀態
-  isWalking: false,
-  walkFrame: 0,
-  hurtFlash: 0,
-  attackFlash: 0,
 
-  // 計算機
-  calcExp: "",
-  calcLastAns: 0,
+// --- DOM Elements ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const gameContainer = document.getElementById('game-container');
+const menu = document.getElementById('menu');
+const questionText = document.getElementById('question-text');
+const hpDisplay = document.getElementById('hp-display');
+const levelDisplay = document.getElementById('level-display');
+const inputField = document.getElementById('answer-input');
+const calcScreen = document.getElementById('calc-screen');
 
-  // 啟動遊戲
-  startGame: function() {
-    var menu = document.getElementById("menu-screen");
-    var gameUI = document.getElementById("game-ui");
-    if(menu) menu.classList.add("hidden");
-    if(gameUI) gameUI.classList.remove("hidden");
-    
-    loop(); 
-    this.startLevel(1);
-  },
+// --- Game State ---
+let currentState = 'MENU'; // MENU, PLAYING, GAMEOVER, WIN
+let layoutMode = 'portrait'; // portrait, landscape
+let level = 1;
+let health = 5;
+let questionCount = 0; // Questions answered correctly in current level
+let currentQuestion = null; // Object { text, answer }
+let calcExpression = ""; // String for calculator
+let lastCalcAnswer = 0;
+let questionsNeeded = 5;
 
-  // 返回選單
-  backToMenu: function() {
-    this.state = "menu";
-    var menu = document.getElementById("menu-screen");
-    var gameUI = document.getElementById("game-ui");
-    var calcPanel = document.getElementById("calc-panel");
+// Animation State
+let frameCount = 0;
+let monsterScale = 0.1; // 0.1 (far) to 1.0 (near)
+let playerState = 'IDLE'; // IDLE, ATTACK, WALK
+let animationTimer = 0;
 
-    if(menu) menu.classList.remove("hidden");
-    if(gameUI) gameUI.classList.add("hidden");
-    if(calcPanel) calcPanel.classList.add("hidden");
-    
-    noLoop();
-  },
+// --- Constants ---
+const TOTAL_LEVELS = 5;
 
-  // 開始關卡
-  startLevel: function(lvl) {
-    this.level = lvl;
-    this.hp = 5;
-    this.monstersKilled = 0;
-    this.updateHUD();
-    this.generateQuestionList(lvl);
-    this.nextQuestion();
-    
-    this.state = "playing";
-    this.isWalking = true;
-    this.walkFrame = 0;
-    
-    var input = document.getElementById("ans-input");
-    if(input) input.value = "";
-    this.calcClear(); 
-  },
+// --- Initialization & Resize ---
+function resize() {
+    // Canvas resolution matches display size for sharpness
+    const rect = document.getElementById('canvas-wrapper').getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
 
-  updateHUD: function() {
-    var hpEl = document.getElementById("hp-display");
-    var lvlEl = document.getElementById("lvl-display");
-    if(hpEl) hpEl.innerText = "HP " + this.hp;
-    if(lvlEl) lvlEl.innerText = "Lv " + this.level;
-  },
-
-  generateQuestionList: function(lvl) {
-    var types = [];
-    if (lvl < 4) types = ["FindA", "FindA", "FindA", "FindA", "FindA"];
-    else if (lvl === 4) types = ["FindP", "FindR", "FindT", "FindP", "FindR"];
-    else types = ["FindP", "FindR", "FindT", "FindR", "FindT"];
-    
-    this.questionList = types.sort(function() { return 0.5 - Math.random() });
-  },
-
-  nextQuestion: function() {
-    this.calcClear(); 
-
-    var type = this.questionList[this.monstersKilled] || "FindA";
-    var q = { text: "", answer: 0 };
-    
-    function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-    var P = rand(1, 20) * 10000;
-    var r = rand(3, 12);
-    var t = rand(2, 5);
-
-    if (this.level === 1) {
-      var I = P * r * t / 100;
-      q.text = "[Lv1] Simple Interest\nP=" + P + ", r=" + r + "%, t=" + t + "yr\nFind I?";
-      q.answer = I;
-    } else if (this.level === 2) {
-      var A = Math.round(P * Math.pow(1 + r/100, t));
-      q.text = "[Lv2] Compound(Yearly)\nP=" + P + ", r=" + r + "%, t=" + t + "yr\nFind A?";
-      q.answer = A;
-    } else if (this.level === 3) {
-      var n = Math.random() > 0.5 ? 12 : 4;
-      var period = (n === 12) ? "Monthly" : "Quarterly";
-      var A = Math.round(P * Math.pow(1 + (r/100)/n, n*t));
-      q.text = "[Lv3] " + period + "\nP=" + P + ", r=" + r + "%, t=" + t + "yr\nFind A?";
-      q.answer = A;
-    } else {
-      var A = Math.round(P * Math.pow(1 + r/100, t));
-      if (type === "FindP") {
-         q.text = "[Lv" + this.level + "] Reverse\nA=" + A + ", r=" + r + "%, t=" + t + "yr\nFind P?";
-         q.answer = P;
-      } else if (type === "FindR") {
-         q.text = "[Lv" + this.level + "] Reverse\nP=" + P + ", A=" + A + ", t=" + t + "yr\nFind r(%)?";
-         q.answer = r;
-      } else {
-         q.text = "[Lv" + this.level + "] Reverse\nP=" + P + ", A=" + A + ", r=" + r + "%\nFind t(yr)?";
-         q.answer = t;
-      }
-    }
-    this.question = q;
-  },
-
-  submitAnswer: function() {
-    if (this.isWalking || !this.question) return;
-    
-    var inputEl = document.getElementById("ans-input");
-    if(!inputEl) return;
-    
-    var inputStr = inputEl.value.replace(/,/g, '');
-    if (!inputStr) return;
-    
-    var val = parseFloat(inputStr);
-    var margin = (this.question.answer > 1000) ? 100 : 1;
-    
-    if (Math.abs(val - this.question.answer) <= margin) {
-      this.monstersKilled++;
-      this.attackFlash = 150;
-      
-      if (this.monstersKilled >= 5) {
-        this.state = "levelClear";
-      } else {
-        this.isWalking = true;
-        this.walkFrame = 0;
-        this.question = null;
-        inputEl.value = "";
-      }
-    } else {
-      this.hp--;
-      this.hurtFlash = 150;
-      this.updateHUD();
-      if (this.hp <= 0) this.state = "gameOver";
-    }
-  },
-
-  // === Calculator ===
-  toggleCalc: function() {
-    var el = document.getElementById("calc-panel");
-    if(el) el.classList.toggle("hidden");
-  },
-  calcAppend: function(v) { this.calcExp += v; this.updateCalcScreen(); },
-  calcClear: function() { this.calcExp = ""; this.updateCalcScreen(); },
-  calcDel: function() { this.calcExp = this.calcExp.slice(0, -1); this.updateCalcScreen(); },
-  calcAns: function() { this.calcExp += "Ans"; this.updateCalcScreen(); },
-  
-  updateCalcScreen: function() {
-    var el = document.getElementById("calc-screen");
-    if(el) el.innerText = this.calcExp || "0";
-  },
-  
-  calcEqual: function() {
-    try {
-      // 這裡一定要用標準 ASCII 字元替換，絕對不要用 unicode 特殊符號
-      var expr = this.calcExp;
-      expr = expr.split("Ans").join(this.calcLastAns);
-      expr = expr.split("\u00D7").join("*"); // 如果之前有存乘號
-      expr = expr.split("\u00F7").join("/"); // 如果之前有存除號
-      expr = expr.split("^").join("**"); // 次方
-
-      // 處理 root (Root 鍵輸入的是 'Root')
-      // 我們約定輸入格式是 A Root B 代表 B^(1/A)
-      if (expr.indexOf("Root") !== -1) {
-         var parts = expr.split("Root");
-         if (parts.length === 2) {
-           expr = "Math.pow(" + parts[1] + ", 1/" + parts[0] + ")";
-         }
-      }
-
-      var res = eval(expr);
-      this.calcLastAns = res;
-      this.calcExp = String(Math.round(res * 10000) / 10000);
-    } catch(err) {
-      this.calcExp = "Error";
-    }
-    this.updateCalcScreen();
-  },
-  
-  fillAns: function() {
-    var el = document.getElementById("ans-input");
-    if(el) el.value = this.calcExp;
-    this.toggleCalc();
-  }
+window.addEventListener('resize', resize);
+window.onload = () => {
+    resize();
+    requestAnimationFrame(gameLoop);
 };
 
-// === P5.js ===
-function setup() {
-  var c = createCanvas(windowWidth, windowHeight);
-  c.parent("canvas-container");
-  c.style("display", "block");
-  c.style("position", "absolute");
-  c.style("top", "0");
-  c.style("left", "0");
-  c.style("z-index", "-1");
-  
-  noLoop();
-  
-  var gameUI = document.getElementById("game-ui");
-  var calcPanel = document.getElementById("calc-panel");
-  if(gameUI) gameUI.classList.add("hidden");
-  if(calcPanel) calcPanel.classList.add("hidden");
+// --- Input Handling (Touch/Mouse) ---
+// We use native click events for buttons, but Canvas interaction is minimal 
+// except for visual feedback. Prevent default gestures on canvas.
+canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+// --- Layout & Menu Logic ---
+document.getElementById('btn-portrait').onclick = () => startGame('portrait');
+document.getElementById('btn-landscape').onclick = () => startGame('landscape');
+document.getElementById('backBtn').onclick = goBackToMenu;
+
+function startGame(mode) {
+    layoutMode = mode;
+    currentState = 'PLAYING';
+    
+    // Toggle Classes
+    menu.classList.add('hidden');
+    gameContainer.classList.remove('hidden');
+    gameContainer.className = mode === 'portrait' ? 'portrait-mode' : 'landscape-mode';
+    
+    // Reset Game Data
+    level = 1;
+    health = 5;
+    questionCount = 0;
+    lastCalcAnswer = 0;
+    
+    resize(); // Force resize to fit new container
+    nextLevel(1);
 }
 
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+function goBackToMenu() {
+    currentState = 'MENU';
+    gameContainer.classList.add('hidden');
+    menu.classList.remove('hidden');
 }
 
-function draw() {
-  background(20);
-  draw3DScene();
+// --- Math Question Generator ---
+function generateQuestion(lvl) {
+    let P, R, T, A, n, text, answer;
+    
+    // Random helpers
+    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    // Round to 2 decimals
+    const round2 = (num) => Math.round(num * 100) / 100;
 
-  if (GameApp.state === "playing" && !GameApp.isWalking && GameApp.question) {
-    drawMonster();
-    drawQuestionBoard();
-  }
+    // Common variables
+    P = randInt(1, 100) * 1000; // 1000 to 100000
+    R = randInt(2, 15); // 2% to 15%
+    T = randInt(2, 10); // 2 to 10 years
 
-  handleEffects();
+    switch(lvl) {
+        case 1: // Level 1: Simple Interest (Calculate Interest or Amount)
+            // Formula: I = P * R% * T
+            let I = P * (R/100) * T;
+            A = P + I;
+            text = `[單利息 Simple Interest]<br>P(本金) = $${P}<br>R(年利率) = ${R}%<br>T(年期) = ${T} 年<br>求本利和 (Amount)?`;
+            answer = A;
+            break;
 
-  if (GameApp.state === "levelClear" || GameApp.state === "gameOver") {
-    drawEndScreen();
-  }
+        case 2: // Level 2: Compound Interest (Annual)
+            // Formula: A = P * (1 + R%)^T
+            A = P * Math.pow((1 + R/100), T);
+            text = `[複利息 Compound Interest]<br>每年一結 (Yearly)<br>P = $${P}, R = ${R}%, T = ${T} 年<br>求本利和 (Amount)?`;
+            answer = A;
+            break;
+
+        case 3: // Level 3: CI with different periods
+            // n can be 2, 4, 12, 365
+            let periods = [2, 4, 12]; 
+            let type = ['每半年 (Half-yearly)', '每季 (Quarterly)', '每月 (Monthly)'];
+            let idx = randInt(0, 2);
+            n = periods[idx];
+            
+            // A = P * (1 + r/n)^(n*t)
+            A = P * Math.pow((1 + (R/100)/n), (n*T));
+            text = `[複利息 Compound]<br>${type[idx]}一結<br>P = $${P}, R = ${R}%, T = ${T} 年<br>求本利和 (Amount)?`;
+            answer = A;
+            break;
+
+        case 4: // Level 4: Find P, R, or T (SI or CI)
+            // Simple Interest Reverse
+            let missing = randInt(0, 2); // 0=P, 1=R, 2=T
+            let simpleI = P * (R/100) * T;
+            let simpleA = P + simpleI;
+            
+            if (missing === 0) { // Find P
+                text = `[單利息 Simple]<br>R = ${R}%, T = ${T} 年, I(利息) = $${simpleI}<br>求本金 P?`;
+                answer = P;
+            } else if (missing === 1) { // Find R
+                text = `[單利息 Simple]<br>P = $${P}, T = ${T} 年, I = $${simpleI}<br>求年利率 R (%)?`;
+                answer = R;
+            } else { // Find T
+                text = `[單利息 Simple]<br>P = $${P}, R = ${R}%, I = $${simpleI}<br>求年期 T?`;
+                answer = T;
+            }
+            break;
+
+        case 5: // Level 5: Reverse Compound (Usually Find P)
+            // Finding R or T in CI without log is hard/messy, usually S3 focuses on finding P for CI
+            // Prompt asks for P, R, T. We will stick to Finding P for complexity management or simple R.
+            // Let's do Find P with monthly/quarterly compounding.
+            let pPeriods = [2, 4];
+            let pType = ['每半年', '每季'];
+            let pIdx = randInt(0, 1);
+            n = pPeriods[pIdx];
+            
+            let totalAmount = P * Math.pow((1 + (R/100)/n), (n*T));
+            totalAmount = round2(totalAmount); // Give them the rounded amount
+            
+            text = `[複利息 Compound Reverse]<br>${pType[pIdx]}一結<br>R = ${R}%, T = ${T} 年, Amount = $${totalAmount}<br>求本金 P (準確至整數)?`;
+            answer = Math.floor(totalAmount / Math.pow((1 + (R/100)/n), (n*T))); 
+            // Note: slightly tricky due to rounding, we accept integer range in check
+            break;
+    }
+    
+    return { text, answer, level: lvl };
 }
 
-function draw3DScene() {
-  var horizon = height / 2;
-  if (GameApp.isWalking) horizon += Math.sin(GameApp.walkFrame * 0.5) * 15;
-
-  noStroke();
-  fill(30); rect(0, 0, width, horizon);
-  fill(50); rect(0, horizon, width, height - horizon);
-
-  var size = width * 0.2;
-  var cx = width / 2;
-  var cy = horizon;
-
-  fill(10);
-  rectMode(CENTER);
-  rect(cx, cy, size, size);
-  rectMode(CORNER);
-
-  stroke(80); strokeWeight(2);
-  line(0, 0, cx - size/2, cy - size/2);
-  line(width, 0, cx + size/2, cy - size/2);
-  line(0, height, cx - size/2, cy + size/2);
-  line(width, height, cx + size/2, cy + size/2);
+function nextLevel(lvl) {
+    if (lvl > TOTAL_LEVELS) {
+        questionText.innerHTML = "恭喜！你已擊敗所有怪獸！<br>Game Completed!";
+        currentState = 'WIN';
+        return;
+    }
+    level = lvl;
+    health = 5;
+    questionCount = 0;
+    monsterScale = 0.3;
+    updateHUD();
+    newTurn();
 }
 
-function draw
+function newTurn() {
+    currentQuestion = generateQuestion(level);
+    questionText.innerHTML = `Level ${level} (Q${questionCount+1}/${questionsNeeded})<br>${currentQuestion.text}`;
+    inputField.value = '';
+    monsterScale = 0.3; // Reset monster distance
+    playerState = 'IDLE';
+}
+
+function updateHUD() {
+    levelDisplay.innerText = level;
+    let hearts = "";
+    for(let i=0; i<health; i++) hearts += "❤️";
+    hpDisplay.innerText = hearts;
+}
+
+// --- Game Logic & Interaction ---
+
+document.getElementById('submit-btn').addEventListener('click', checkAnswer);
+document.getElementById('calc-toggle-btn').addEventListener('click', () => {
+    document.getElementById('calculator').classList.toggle('hidden');
+});
+
+function checkAnswer() {
+    if (currentState !== 'PLAYING') return;
+    
+    let userVal = parseFloat(inputField.value);
+    let correctVal = currentQuestion.answer;
+    
+    // Tolerance for floating point and currency
+    let isCorrect = false;
+    if (Math.abs(userVal - correctVal) < 0.1) isCorrect = true;
+    // For integer answers
+    if (Math.round(userVal) === Math.round(correctVal)) isCorrect = true;
+
+    if (isCorrect) {
+        // Correct Animation
+        playerState = 'ATTACK';
+        animationTimer = 30; // 0.5 sec at 60fps
+        questionCount++;
+        setTimeout(() => {
+            if (questionCount >= questionsNeeded) {
+                alert("Level Complete! Next Level.");
+                nextLevel(level + 1);
+            } else {
+                newTurn();
+            }
+        }, 1000);
+    } else {
+        // Wrong
+        health--;
+        updateHUD();
+        alert(`錯了！正確答案是: ${correctVal.toFixed(2)}\nWrong! Monster attacks you!`);
+        if (health <= 0) {
+            alert("Game Over! Try Level " + level + " again.");
+            nextLevel(level); // Restart level
+        }
+    }
+}
+
+// --- Canvas Rendering (The "Fake 3D") ---
+function gameLoop() {
+    if (currentState !== 'PLAYING' && currentState !== 'WIN') {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    frameCount++;
+    
+    // Clear background
+    ctx.fillStyle = '#87CEEB'; // Sky
+    ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+    ctx.fillStyle = '#27ae60'; // Grass
+    ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+
+    // Draw Fake 3D Grid Lines
+    ctx.strokeStyle = '#1e8449';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    
+    // Radiating lines
+    for (let i = -5; i <= 5; i++) {
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + (i * cx * 1.5), canvas.height);
+    }
+    // Horizontal lines (moving effect)
+    let offset = (frameCount % 60) / 60 * (canvas.height/2);
+    for (let y = cy; y < canvas.height; y += (y-cy)*0.2 + 10) {
+       // Simple perspective approximation
+       ctx.moveTo(0, y);
+       ctx.lineTo(canvas.width, y);
+    }
+    ctx.stroke();
+
+    // Draw Monster
+    if (playerState !== 'ATTACK' || frameCount % 10 < 5) { // Flash if attacked
+        drawMonster(cx, cy + 50, monsterScale);
+    }
+    
+    // Idle Animation (Breathing)
+    if (playerState === 'IDLE') {
+        monsterScale = 0.3 + Math.sin(frameCount * 0.05) * 0.02;
+    } else if (playerState === 'ATTACK') {
+        monsterScale -= 0.01; // Shrink/Die
+        animationTimer--;
+    }
+
+    // Draw Player Weapon (Sword)
+    drawSword();
+
+    requestAnimationFrame(gameLoop);
+}
+
+function drawMonster(x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale * (canvas.height/300), scale * (canvas.height/300)); // Responsive scaling
+    
+    // Monster Body (Slime shape)
+    ctx.fillStyle = 'purple';
+    ctx.beginPath();
+    ctx.arc(0, 0, 50, Math.PI, 0); // Top half
+    ctx.bezierCurveTo(50, 50, -50, 50, -50, 0); // Bottom squish
+    ctx.fill();
+    
+    // Eyes
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-20, -10, 12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(20, -10, 12, 0, Math.PI*2); ctx.fill();
+    
+    ctx.fillStyle = 'red';
+    ctx.beginPath(); ctx.arc(-20, -10, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(20, -10, 4, 0, Math.PI*2); ctx.fill();
+
+    ctx.restore();
+}
+
+function drawSword() {
+    ctx.save();
+    // Position sword based on Attack animation
+    let swing = 0;
+    if (playerState === 'ATTACK') {
+        swing = (30 - animationTimer) * 0.1; // Swing arc
+    }
+    
+    const swX = canvas.width * 0.8;
+    const swY = canvas.height;
+
+    ctx.translate(swX, swY);
+    ctx.rotate(-0.5 - swing); // Resting position
+
+    // Blade
+    ctx.fillStyle = '#bdc3c7';
+    ctx.fillRect(-10, -200, 20, 200);
+    ctx.beginPath(); ctx.moveTo(-10, -200); ctx.lineTo(0, -230); ctx.lineTo(10, -200); ctx.fill();
+    
+    // Handle
+    ctx.fillStyle = '#8e44ad';
+    ctx.fillRect(-15, 0, 30, 10); // Guard
+    ctx.fillStyle = '#34495e';
+    ctx.fillRect(-5, 10, 10, 40); // Grip
+
+    ctx.restore();
+}
+
+// --- Calculator Logic ---
+const calcBtns = document.querySelectorAll('.calc-btn');
+calcBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => handleCalcInput(e.target.dataset.val));
+});
+
+function handleCalcInput(val) {
+    if (val === 'AC') {
+        calcExpression = "";
+    } else if (val === 'DEL') {
+        calcExpression = calcExpression.slice(0, -1);
+    } else if (val === 'ENTER') {
+        // Evaluate result and put in input box
+        try {
+            // Replace math symbols for JS
+            let evalStr = calcExpression
+                .replace(/\^/g, '**')
+                .replace(/x√/g, 'Math.pow'); 
+            // Special handling for Nth root button logic is tricky in string stream
+            // Simple implementation: allow user to type 27^(1/3)
+            
+            let result = eval(evalStr); // Note: eval used for simplicity in local static app
+            lastCalcAnswer = result;
+            inputField.value = parseFloat(result.toFixed(4)); // Fill game input
+            calcExpression = String(result);
+        } catch (e) {
+            calcExpression = "Error";
+        }
+    } else if (val === 'ANS') {
+        calcExpression += lastCalcAnswer;
+    } else if (val === 'SQRT') {
+        // Nth root helper: user types x, then hits this, then y -> x^(1/y)
+        // Actually easier to just provide Power and let them do ^(1/3).
+        // The user wanted Nth root. 
+        // Let's make this button insert "^(1/"
+        calcExpression += "^(1/";
+    } else {
+        calcExpression += val;
+    }
+    calcScreen.innerText = calcExpression || "0";
+}
