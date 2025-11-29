@@ -4,48 +4,55 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Math Warrior: Interest Quest</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- Visual Effects Overlays -->
+    <div id="damage-overlay"></div>
+    <div id="combo-overlay">COMBO x<span id="combo-count">0</span>!</div>
+
     <!-- Layout Selection Menu -->
     <div id="menu">
-        <h1>利息戰士 Interest Warrior</h1>
+        <h1 style="color:#f1c40f; text-shadow: 2px 2px #c0392b;">利息戰士 Interest Warrior</h1>
         <p>選擇你的顯示模式 / Choose Layout</p>
         <div class="menu-buttons">
-            <button id="btn-portrait">直向 (手機 / Mobile)</button>
-            <button id="btn-landscape">橫向 (平板 / iPad)</button>
+            <button id="btn-portrait">📱 直向 (Portrait)</button>
+            <button id="btn-landscape">💻 橫向 (Landscape)</button>
         </div>
+        <button id="btn-continue" class="hidden" style="margin-top:20px; background:#2ecc71; border: 2px solid white;">🔄 繼續遊戲 Continue</button>
     </div>
 
-    <!-- Main Game Container (Hidden initially) -->
+    <!-- Main Game Container -->
     <div id="game-container" class="hidden">
         
-        <!-- Canvas Layer: Renders the 3D scene, Monster, and Animations -->
+        <!-- Canvas Layer -->
         <div id="canvas-wrapper">
             <canvas id="gameCanvas"></canvas>
-            <button id="backBtn">返回 Back</button>
+            <button id="backBtn">🔙 Menu</button>
         </div>
 
-        <!-- UI Layer: Question, Input, and Calculator -->
+        <!-- UI Layer -->
         <div id="ui-layer">
             <div id="status-bar">
-                <span>Level: <span id="level-display">1</span></span>
-                <span>HP: <span id="hp-display">❤️❤️❤️❤️❤️</span></span>
+                <span>LVL <span id="level-display">1</span></span>
+                <span>HP <span id="hp-display">❤️❤️❤️❤️❤️</span></span>
             </div>
 
-            <div id="question-box">
+            <div id="question-container">
                 <div id="question-text">準備開始... / Ready...</div>
             </div>
 
+            <!-- Read-only Input -->
             <div id="input-area">
-                <input type="number" id="answer-input" placeholder="輸入答案 / Answer" step="0.01">
-                <button id="submit-btn">攻擊 Attack!</button>
-                <button id="calc-toggle-btn">計算機 Calculator</button>
+                <input type="text" id="answer-input" placeholder="按計算機輸入 / Use Calc" readonly>
+                <button id="submit-btn">⚔️ 攻擊 Attack!</button>
+                <button id="calc-toggle-btn">🧮 Calc</button>
             </div>
 
-            <!-- Virtual Calculator Overlay -->
-            <div id="calculator" class="hidden">
+            <!-- Virtual Calculator -->
+            <div id="calculator" class="">
                 <div class="calc-screen" id="calc-screen">0</div>
                 <div class="calc-keys">
                     <button class="calc-btn op" data-val="AC">AC</button>
@@ -73,9 +80,10 @@
                     <button class="calc-btn op" data-val="^">x^y</button>
                     <button class="calc-btn op" data-val="+">+</button>
                     
+                    <!-- Special Root Button -->
                     <button class="calc-btn action" data-val="ANS">Ans</button>
-                    <button class="calc-btn op" data-val="SQRT">x√</button>
-                    <button class="calc-btn enter" data-val="ENTER" style="grid-column: span 2;">輸入 Insert</button>
+                    <button class="calc-btn op" data-val="ROOT" style="font-size: 1rem;">x√y</button>
+                    <button class="calc-btn enter" data-val="INSERT" style="grid-column: span 2;">📥 填入 Insert</button>
                 </div>
             </div>
         </div>
