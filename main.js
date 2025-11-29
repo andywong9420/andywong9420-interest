@@ -1,817 +1,600 @@
 // main.js
-// -----------------------------------------------------------
-// 這個檔案負責：
-// - 建立 p5.js 畫布（全螢幕，隨視窗大小改變）
-// - 控制遊戲狀態（選單、選關、作答、通關、失敗）
-// - 區分直向（portrait）與橫向（landscape）兩種版面布局
-// - 處理觸控與滑鼠點擊（touchStarted / mousePressed）
-// - 控制 HTML 的答案輸入區與虛擬計算機
-// -----------------------------------------------------------
 
-// ====== DOM 元素參照：版面選擇畫面、返回按鈕、答案輸入區、計算機 ======
-let layoutSelectDiv;      // HTML 中的版面選擇區塊
-let backButtonElement;    // HTML 中的返回按鈕
-let answerPanelElement;   // 下方答案輸入區
-let answerInputElement;   // 答案輸入框
-let calculatorPanel;      // 虛擬計算機整個面板
-let calcDisplayElement;   // 計算機顯示區
-
-// 計算機目前顯示的算式字串
+// ====== 全域變數與 DOM ======
+let layoutSelectDiv, backBtn, answerPanel, answerInput, calcPanel, calcDisplay;
 let calcExpression = "";
 let calcVisible = false;
 
-// ====== 遊戲主要狀態變數 ======
-let currentLayout = null; // "portrait" / "landscape" / null
-let gamePhase = "menu";   // "menu" / "chooseLevel" / "playing" / "gameOver" / "levelClear"
-let currentLevel = 1;     // 1, 2, 3
+// 遊戲狀態
+let currentLayout = null; // "portrait" | "landscape"
+let gamePhase = "menu";   // "menu", "chooseLevel", "playing", "gameOver", "levelClear"
+let currentLevel = 1;
 
-// 生命與關卡設定（老師可在這裡調整難度）
-const MAX_HEALTH = 5;          // 每關生命數
-const QUESTIONS_PER_LEVEL = 5; // 每次挑戰要答的題數
-const POOL_SIZE_PER_LEVEL = 30;// 每一關預先產生的題目數（30 題題庫）
+// RPG 數值
+const MAX_PLAYER_HP = 5;
+const MONSTER_MAX_HP = 5; // 每關 5 題 = 怪獸 5 滴血
+let playerHP = MAX_PLAYER_HP;
+let monsterHP = MONSTER_MAX_HP;
 
-let health = MAX_HEALTH;
-let score = 0;                 // 全部關卡的累積得分（答對題數）
+// 題目系統
+let currentQuestion = null;
+let lastFeedback = "";     // 戰鬥訊息 (e.g. "造成 1 點傷害！")
+let feedbackTimer = 0;     // 控制訊息顯示時間
+let shakeAmount = 0;       // 受傷震動特效
 
-// 題庫與當前題目狀態
-let questionPools = {
-  1: [],
-  2: [],
-  3: []
+// 視覺設定
+const COLORS = {
+  bg: [15, 23, 42],
+  player: [59, 130, 246], // 藍色勇者
+  monster: [239, 68, 68], // 紅色怪獸
+  monster2: [168, 85, 247], // 紫色 (Lv2)
+  monster3: [234, 179, 8],  // 黃色 (Lv3)
+  monster4: [16, 185, 129], // 綠色 (Lv4)
+  uiBg: [30, 41, 59],
+  text: [241, 245, 249]
 };
-let questionOrder = [];        // 當前挑戰要用的題目索引（從題庫抽出的 5 題）
-let questionIndexInRun = 0;    // 本輪目前是第幾題（0 ～ QUESTIONS_PER_LEVEL-1）
-let currentQuestion = null;    // 目前顯示中的題目物件
-let lastFeedback = "";         // "答對！" / "答錯了..." 等提示文字
 
-// 方便調整 UI 用的顏色
-const BG_COLOR = [15, 23, 42];
-const CARD_COLOR = [30, 64, 175];
-const CARD_ALT_COLOR = [22, 101, 52];
-const TEXT_MAIN = [248, 250, 252];
-const TEXT_SUB = [191, 219, 254];
-
-// -----------------------------------------------------------
-// p5.js 必要函式：setup() 只在載入時執行一次
-// -----------------------------------------------------------
 function setup() {
-  // 建立與視窗同大小的畫布，適合手機與平板
-  // windowWidth / windowHeight 會自動對應到瀏覽器可用區域。[web:21]
-  let canvas = createCanvas(windowWidth, windowHeight);
-  // 禁止在行動裝置上因為觸控而捲動或放大整個頁面，以免影響遊戲互動。[web:5]
-  canvas.elt.style.touchAction = "none";
+  let c = createCanvas(windowWidth, windowHeight);
+  c.elt.style.touchAction = "none"; // 禁止 iOS 預設觸控
 
-  // 取得 HTML 元素，控制顯示與隱藏
+  // 綁定 HTML
   layoutSelectDiv = document.getElementById("layout-select");
-  backButtonElement = document.getElementById("backButton");
-  answerPanelElement = document.getElementById("answer-panel");
-  answerInputElement = document.getElementById("answerInput");
-  calculatorPanel = document.getElementById("calculator-panel");
-  calcDisplayElement = document.getElementById("calc-display");
+  backBtn = document.getElementById("backButton");
+  answerPanel = document.getElementById("answer-panel");
+  answerInput = document.getElementById("answerInput");
+  calcPanel = document.getElementById("calculator-panel");
+  calcDisplay = document.getElementById("calc-display");
 
-  // 初始顯示為版面選擇畫面
+  textFont("Segoe UI, sans-serif");
   showMenuUI();
-
-  textFont("system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif");
-  textAlign(CENTER, CENTER);
-
-  // 建立三關的題庫（每關 30 題）
-  buildAllQuestionPools();
-
-  // 讓計算機顯示初始值
-  updateCalcDisplay();
 }
 
-// -----------------------------------------------------------
-// 當視窗大小改變時，自動調整畫布大小（保持全螢幕）[web:21]
-// -----------------------------------------------------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
-// -----------------------------------------------------------
-// p5.js 連續繪圖函式：每秒多次重畫畫面
-// 根據 currentLayout 與 gamePhase 不同，畫出不同的版面
-// -----------------------------------------------------------
 function draw() {
-  background(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+  background(COLORS.bg);
 
-  // 如果還在 HTML 選單畫面，就只畫一個淡淡背景
-  if (gamePhase === "menu" || currentLayout === null) {
-    drawMenuBackground();
+  if (shakeAmount > 0) {
+    translate(random(-shakeAmount, shakeAmount), random(-shakeAmount, shakeAmount));
+    shakeAmount *= 0.9;
+    if (shakeAmount < 0.5) shakeAmount = 0;
+  }
+
+  if (gamePhase === "menu") {
+    drawMenuEffect(); // 背景特效
     return;
   }
 
-  if (currentLayout === "portrait") {
-    drawPortraitLayout();
-  } else if (currentLayout === "landscape") {
-    drawLandscapeLayout();
+  if (gamePhase === "chooseLevel") {
+    drawLevelSelect();
+  } else if (gamePhase === "playing") {
+    drawBattleScene();
+  } else if (gamePhase === "gameOver" || gamePhase === "levelClear") {
+    drawEndScreen();
   }
 }
 
-// ====== 畫面繪圖：背景與兩種版面共用的小工具 ======
-function drawMenuBackground() {
-  // 簡單的背景光暈，讓選單更有遊戲感
+// ====== 繪圖邏輯 ======
+
+function drawMenuEffect() {
   noStroke();
-  for (let r = Math.max(width, height); r > 0; r -= 40) {
-    let alpha = map(r, 0, Math.max(width, height), 180, 0);
-    fill(30, 64, 175, alpha);
-    ellipse(width * 0.5, height * 0.3, r, r);
+  fill(255, 255, 255, 20);
+  for (let i = 0; i < 10; i++) {
+    let r = (frameCount * 2 + i * 100) % width;
+    ellipse(width/2, height/2, r, r * 0.6);
   }
 }
 
-// 共用的 HUD：關卡、生命、分數
-function drawHUDTop(centeredForPortrait) {
-  textAlign(LEFT, CENTER);
-  textSize(Math.min(width, height) * 0.035);
+function drawLevelSelect() {
+  textAlign(CENTER, CENTER);
+  fill(COLORS.text);
+  textSize(min(width, height) * 0.05);
+  
+  let titleY = currentLayout === "portrait" ? height * 0.15 : height * 0.1;
+  text("選擇討伐目標", width * 0.5, titleY);
 
-  // 關卡與分數
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  let margin = 10;
-  let lineH = textSize() + 2;
+  // 根據直向/橫向排列按鈕
+  // 這裡其實主要靠 HTML/CSS 處理，但我們可以在 Canvas 上畫一些裝飾
+  // 為了簡單，選關邏輯我們用 Canvas 畫按鈕，讓體驗更統一
+  
+  let levels = [
+    { id: 1, name: "Lv1 史萊姆", desc: "簡單利息" },
+    { id: 2, name: "Lv2 雙頭狼", desc: "年複利" },
+    { id: 3, name: "Lv3 奇美拉", desc: "非年複利" },
+    { id: 4, name: "Lv4 惡龍王", desc: "求 P/R/T" }
+  ];
 
-  text(`關卡：${currentLevel} / 3`, margin + 4, margin + lineH * 0.5);
-  text(`分數：${score}`, margin + 4, margin + lineH * 1.5);
-
-  // 生命（以小圓點代表）
-  let cxStart = width - margin - 20;
-  for (let i = 0; i < MAX_HEALTH; i++) {
-    let filled = (i < health);
-    if (filled) {
-      fill(239, 68, 68);
-    } else {
-      noFill();
-      stroke(148, 163, 184);
-      strokeWeight(2);
+  let startY = currentLayout === "portrait" ? height * 0.25 : height * 0.2;
+  let btnH = currentLayout === "portrait" ? height * 0.12 : height * 0.15;
+  let gap = 15;
+  let btnW = currentLayout === "portrait" ? width * 0.8 : width * 0.4;
+  
+  // 如果是橫向，做 2x2 排列；直向做 1x4
+  if (currentLayout === "landscape") {
+    for (let i = 0; i < levels.length; i++) {
+      let col = i % 2;
+      let row = Math.floor(i / 2);
+      let x = width * 0.3 + col * (btnW + gap); // 偏右一點
+      let y = startY + row * (btnH + gap);
+      drawLevelButton(x, y, btnW, btnH, levels[i]);
     }
-    ellipse(cxStart - i * 22, margin + lineH, 16, 16);
-    noStroke();
-  }
-
-  // 回饋文字（答對／答錯）
-  if (lastFeedback) {
-    textAlign(CENTER, CENTER);
-    fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-    textSize(Math.min(width, height) * 0.03);
-    let yPos = centeredForPortrait ? height * 0.78 : height * 0.9;
-    text(lastFeedback, width * 0.5, yPos);
-  }
-}
-
-// ====== 直向版面繪製 ======
-function drawPortraitLayout() {
-  if (gamePhase === "chooseLevel") {
-    drawPortraitLevelSelect();
-  } else if (gamePhase === "playing") {
-    drawPortraitGameScreen();
-  } else if (gamePhase === "gameOver") {
-    drawPortraitGameOver();
-  } else if (gamePhase === "levelClear") {
-    drawPortraitLevelClear();
-  }
-}
-
-// 直向：選關畫面（關卡 1～3）
-function drawPortraitLevelSelect() {
-  drawMenuBackground();
-  textAlign(CENTER, CENTER);
-
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.05);
-  text("請選擇關卡", width * 0.5, height * 0.18);
-
-  let btnW = width * 0.7;
-  let btnH = height * 0.1;
-  let startY = height * 0.32;
-  let gap = btnH * 0.25;
-
-  for (let lvl = 1; lvl <= 3; lvl++) {
-    let y = startY + (lvl - 1) * (btnH + gap);
-    drawButtonRect(width * 0.5 - btnW / 2, y, btnW, btnH,
-      `第 ${lvl} 關`, lvl === 1 ? "簡單利息基礎" :
-      lvl === 2 ? "簡單利息＋少量複利" :
-      "複利為主（較難）");
-  }
-
-  textSize(Math.min(width, height) * 0.028);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text("提示：每關 5 題，5 點生命。可用下方答案欄輸入或開啟計算機。", width * 0.5, height * 0.8);
-}
-
-// 直向：遊戲作答畫面（題目＋提醒學生用下方答案區）
-function drawPortraitGameScreen() {
-  drawHUDTop(true);
-  if (!currentQuestion) return;
-
-  // 題目卡片
-  let cardW = width * 0.85;
-  let cardH = height * 0.34;
-  let cardX = width * 0.5 - cardW / 2;
-  let cardY = height * 0.18;
-
-  drawQuestionCard(cardX, cardY, cardW, cardH, currentQuestion);
-
-  // 題號顯示與提示
-  textAlign(CENTER, CENTER);
-  textSize(Math.min(width, height) * 0.03);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text(
-    `第 ${questionIndexInRun + 1} 題 / 共 ${QUESTIONS_PER_LEVEL} 題  |  請用下方輸入答案或計算機`,
-    width * 0.5,
-    height * 0.55
-  );
-}
-
-// 直向：失敗畫面
-function drawPortraitGameOver() {
-  drawMenuBackground();
-  drawHUDTop(true);
-
-  textAlign(CENTER, CENTER);
-  fill(248, 113, 113);
-  textSize(Math.min(width, height) * 0.06);
-  text("挑戰失敗！", width * 0.5, height * 0.35);
-
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.035);
-  text(
-    `第 ${currentLevel} 關還沒通過。\n輕觸螢幕任意位置重新挑戰本關。`,
-    width * 0.5, height * 0.5
-  );
-
-  textSize(Math.min(width, height) * 0.028);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text("或按左上角「返回版面選擇」，改選版面再玩。", width * 0.5, height * 0.72);
-}
-
-// 直向：通關畫面
-function drawPortraitLevelClear() {
-  drawMenuBackground();
-  drawHUDTop(true);
-
-  textAlign(CENTER, CENTER);
-  fill(52, 211, 153);
-  textSize(Math.min(width, height) * 0.06);
-  text(`恭喜通過第 ${currentLevel} 關！`, width * 0.5, height * 0.35);
-
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.035);
-
-  if (currentLevel < 3) {
-    text(
-      `你可以挑戰下一關（第 ${currentLevel + 1} 關）。\n輕觸螢幕任意位置繼續。`,
-      width * 0.5, height * 0.5
-    );
+    // 左側說明
+    textSize(height * 0.04);
+    textAlign(LEFT);
+    text("請點擊怪獸\n開始戰鬥！", width * 0.05, height * 0.4);
   } else {
-    text(
-      "已完成全部三關！\n輕觸螢幕任意位置重新挑戰第 3 關。",
-      width * 0.5, height * 0.5
-    );
-  }
-
-  textSize(Math.min(width, height) * 0.028);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text("也可以按左上角「返回版面選擇」，改選版面或給同學玩。", width * 0.5, height * 0.72);
-}
-
-// ====== 橫向版面繪製 ======
-function drawLandscapeLayout() {
-  if (gamePhase === "chooseLevel") {
-    drawLandscapeLevelSelect();
-  } else if (gamePhase === "playing") {
-    drawLandscapeGameScreen();
-  } else if (gamePhase === "gameOver") {
-    drawLandscapeGameOver();
-  } else if (gamePhase === "levelClear") {
-    drawLandscapeLevelClear();
+    for (let i = 0; i < levels.length; i++) {
+      let x = width * 0.1;
+      let y = startY + i * (btnH + gap);
+      drawLevelButton(x, y, btnW, btnH, levels[i]);
+    }
   }
 }
 
-// 橫向：選關畫面
-function drawLandscapeLevelSelect() {
-  drawMenuBackground();
-  textAlign(CENTER, CENTER);
-
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.055);
-  text("請選擇關卡", width * 0.3, height * 0.25);
-
-  textSize(Math.min(width, height) * 0.03);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text(
-    "左邊為說明區，右邊為關卡按鈕。\n作答時使用下方答案輸入區與計算機。",
-    width * 0.3, height * 0.48
-  );
-
-  let btnW = width * 0.32;
-  let btnH = height * 0.18;
-  let startX = width * 0.6;
-  let startY = height * 0.2;
-  let gap = height * 0.04;
-
-  for (let lvl = 1; lvl <= 3; lvl++) {
-    let x = startX;
-    let y = startY + (lvl - 1) * (btnH + gap);
-    drawButtonRect(x, y, btnW, btnH,
-      `第 ${lvl} 關`,
-      lvl === 1 ? "簡單利息基礎" :
-      lvl === 2 ? "簡單利息＋少量複利" :
-      "複利為主（較難）");
-  }
-}
-
-// 橫向：遊戲作答畫面
-function drawLandscapeGameScreen() {
-  drawHUDTop(false);
-  if (!currentQuestion) return;
-
-  // 左側題目區
-  let cardW = width * 0.5;
-  let cardH = height * 0.65;
-  let cardX = width * 0.05;
-  let cardY = height * 0.18;
-
-  drawQuestionCard(cardX, cardY, cardW, cardH, currentQuestion);
-
-  // 右側提示區
-  textAlign(CENTER, TOP);
-  textSize(Math.min(width, height) * 0.03);
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  text(
-    `第 ${questionIndexInRun + 1} 題 / 共 ${QUESTIONS_PER_LEVEL} 題\n\n請在下方輸入本利和，\n可按「開啟計算機」輔助計算（支援乘方）。`,
-    width * 0.75,
-    height * 0.28
-  );
-}
-
-// 橫向：失敗畫面
-function drawLandscapeGameOver() {
-  drawMenuBackground();
-  drawHUDTop(false);
-
-  textAlign(CENTER, CENTER);
-  fill(248, 113, 113);
-  textSize(Math.min(width, height) * 0.055);
-  text("挑戰失敗！", width * 0.3, height * 0.35);
-
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.03);
-  text(
-    `第 ${currentLevel} 關尚未通過。\n輕觸螢幕重新挑戰同一關。`,
-    width * 0.3, height * 0.55
-  );
-
-  textSize(Math.min(width, height) * 0.028);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text("右上角「返回版面選擇」可改用直向或橫向版面。", width * 0.3, height * 0.72);
-}
-
-// 橫向：通關畫面
-function drawLandscapeLevelClear() {
-  drawMenuBackground();
-  drawHUDTop(false);
-
-  textAlign(CENTER, CENTER);
-  fill(52, 211, 153);
-  textSize(Math.min(width, height) * 0.055);
-  text(`恭喜通過第 ${currentLevel} 關！`, width * 0.3, height * 0.35);
-
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.03);
-
-  if (currentLevel < 3) {
-    text(
-      `可以繼續挑戰第 ${currentLevel + 1} 關。\n輕觸螢幕任意位置繼續。`,
-      width * 0.3, height * 0.55
-    );
-  } else {
-    text(
-      "已完成全部三關！\n輕觸螢幕任意位置重新挑戰第 3 關。",
-      width * 0.3, height * 0.55
-    );
-  }
-
-  textSize(Math.min(width, height) * 0.028);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text("也可按左上角「返回版面選擇」，改選版面或給同學接力玩。", width * 0.3, height * 0.75);
-}
-
-// ====== 共用繪圖元件：題目卡片與按鈕 ======
-function drawQuestionCard(x, y, w, h, q) {
-  // 題目背景卡片
+function drawLevelButton(x, y, w, h, levelData) {
+  fill(COLORS.uiBg);
+  stroke(100);
+  strokeWeight(2);
+  rect(x, y, w, h, 10);
+  
   noStroke();
-  fill(CARD_COLOR[0], CARD_COLOR[1], CARD_COLOR[2], 230);
-  rect(x, y, w, h, 18);
-
-  // 題目文字
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
+  fill(COLORS.text);
   textAlign(LEFT, TOP);
-
-  let padding = w * 0.08;
-  let baseX = x + padding;
-  let baseY = y + padding;
-  let availableW = w - padding * 2;
-
-  let sizeTitle = Math.min(width, height) * 0.035;
-  let sizeBody = Math.min(width, height) * 0.03;
-
-  textSize(sizeTitle);
-  let typeLabel = q.type === "simple" ? "簡單利息" : "複利";
-  text(`[${typeLabel}] 第 ${currentLevel} 關`, baseX, baseY);
-
-  textSize(sizeBody);
-  let line1 = `本金：$${q.principal}`;
-  let line2 = `年利率：${q.rate}%`;
-  let line3 = `年期：${q.years} 年`;
-  let line4 = `題目：求最後的本利和（四捨五入至最接近整數）。`;
-
-  let lh = sizeBody * 1.4;
-  text(line1, baseX, baseY + sizeTitle * 1.6, availableW, lh);
-  text(line2, baseX, baseY + sizeTitle * 1.6 + lh, availableW, lh);
-  text(line3, baseX, baseY + sizeTitle * 1.6 + lh * 2, availableW, lh);
-  text(line4, baseX, baseY + sizeTitle * 1.6 + lh * 3, availableW, lh * 2);
+  textSize(min(w, h) * 0.25);
+  text(levelData.name, x + 20, y + 15);
+  
+  textSize(min(w, h) * 0.18);
+  fill(150, 160, 180);
+  text(levelData.desc, x + 20, y + h * 0.55);
 }
 
-// 通用「矩形按鈕」繪製，用於選關按鈕
-function drawButtonRect(x, y, w, h, title, sub) {
+function drawBattleScene() {
+  // 1. 畫 HUD (血條)
+  drawHUD();
+
+  // 2. 畫角色
+  drawEntities();
+
+  // 3. 畫題目板
+  if (currentQuestion) {
+    drawQuestionBoard();
+  }
+
+  // 4. 戰鬥回饋文字
+  if (lastFeedback && frameCount < feedbackTimer) {
+    textAlign(CENTER, CENTER);
+    textSize(30);
+    fill(255, 255, 0);
+    stroke(0);
+    strokeWeight(4);
+    text(lastFeedback, width/2, height/2);
+  }
+}
+
+function drawHUD() {
+  let barH = 20;
+  let margin = 20;
+  
+  // 玩家 HP (藍色)
+  fill(COLORS.text);
   noStroke();
-  fill(CARD_ALT_COLOR[0], CARD_ALT_COLOR[1], CARD_ALT_COLOR[2], 235);
-  rect(x, y, w, h, 16);
+  textSize(16);
+  textAlign(LEFT, BOTTOM);
+  text(`勇者 HP: ${playerHP}/${MAX_PLAYER_HP}`, margin, margin + 30);
+  
+  fill(50);
+  rect(margin, margin + 35, 150, barH); // 底
+  fill(COLORS.player);
+  rect(margin, margin + 35, 150 * (playerHP / MAX_PLAYER_HP), barH); // 血
 
-  textAlign(CENTER, CENTER);
-  fill(TEXT_MAIN[0], TEXT_MAIN[1], TEXT_MAIN[2]);
-  textSize(Math.min(width, height) * 0.035);
-  text(title, x + w / 2, y + h * 0.35);
-
-  textSize(Math.min(width, height) * 0.028);
-  fill(TEXT_SUB[0], TEXT_SUB[1], TEXT_SUB[2]);
-  text(sub, x + w / 2, y + h * 0.7);
+  // 怪獸 HP (紅色)
+  let mX = width - margin - 150;
+  textAlign(RIGHT, BOTTOM);
+  fill(COLORS.text);
+  text(`怪獸 HP: ${monsterHP}/${MONSTER_MAX_HP}`, width - margin, margin + 30);
+  
+  fill(50);
+  rect(mX, margin + 35, 150, barH);
+  let mColor = getMonsterColor(currentLevel);
+  fill(mColor);
+  rect(mX, margin + 35, 150 * (monsterHP / MONSTER_MAX_HP), barH);
 }
 
-// ====== 題目生成與題庫建構 ======
-// 老師如要調整難度，可以修改以下 generateQuestionForLevel() 內的金額、利率與年期範圍。
-function buildAllQuestionPools() {
-  for (let lvl = 1; lvl <= 3; lvl++) {
-    questionPools[lvl] = [];
-    for (let i = 0; i < POOL_SIZE_PER_LEVEL; i++) {
-      questionPools[lvl].push(generateQuestionForLevel(lvl));
-    }
-  }
+function getMonsterColor(lvl) {
+  if(lvl == 2) return COLORS.monster2;
+  if(lvl == 3) return COLORS.monster3;
+  if(lvl == 4) return COLORS.monster4;
+  return COLORS.monster;
 }
 
-function generateQuestionForLevel(level) {
-  // 使用原生 Math.random()，不依賴 p5.js random()
-  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-  let principal, rate, years, type;
-  if (level === 1) {
-    type = "simple";               // 第一關只做簡單利息
-    principal = randInt(1000, 9000) * 10; // 1 萬以下
-    rate = randInt(2, 8);          // 2% ~ 8%
-    years = randInt(1, 3);         // 1~3 年
-  } else if (level === 2) {
-    type = Math.random() < 0.6 ? "simple" : "compound";
-    principal = randInt(3000, 20000) * 10;
-    rate = randInt(2, 8);
-    years = randInt(1, 4);
-  } else {
-    type = "compound";             // 第三關以複利為主
-    principal = randInt(5000, 30000) * 10;
-    rate = randInt(3, 10);
-    years = randInt(2, 5);
-  }
-
-  let r = rate / 100;
-  let amount;
-  if (type === "simple") {
-    let interest = Math.round(principal * r * years);
-    amount = principal + interest;
-  } else {
-    // 使用乘方運算子 ** 或 Math.pow() 計算複利[web:30][web:28]
-    amount = Math.round(principal * Math.pow(1 + r, years));
-  }
-
-  // 這裡仍保留選項產生，用於未來如要改回選擇題可以直接使用
-  let options = makeOptionsAround(amount);
-  return { level, type, principal, rate, years, amount, options };
-}
-
-// 產生含正確答案在內的三個選項（目前遊戲流程改為輸入題，但保留此功能供老師備用）
-function makeOptionsAround(correct) {
-  let opts = [correct];
-  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-  while (opts.length < 3) {
-    let offset = randInt(5, 25) * 100;   // 相差 500～2500 元
-    let sign = Math.random() < 0.5 ? -1 : 1;
-    let candidate = correct + sign * offset;
-    if (candidate > 0 && !opts.includes(candidate)) {
-      opts.push(candidate);
-    }
-  }
-
-  // 打亂順序
-  for (let i = opts.length - 1; i > 0; i--) {
-    let j = Math.floor(Math.random() * (i + 1));
-    [opts[i], opts[j]] = [opts[j], opts[i]];
-  }
-  return opts;
-}
-
-// 開始某一關卡前，從題庫中抽出 QUESTIONS_PER_LEVEL 題
-function prepareRunForLevel(level) {
-  let pool = questionPools[level];
-  let used = new Set();
-  questionOrder = [];
-
-  while (questionOrder.length < QUESTIONS_PER_LEVEL && used.size < pool.length) {
-    let idx = Math.floor(Math.random() * pool.length);
-    if (!used.has(idx)) {
-      used.add(idx);
-      questionOrder.push(idx);
-    }
-  }
-
-  questionIndexInRun = 0;
-  health = MAX_HEALTH;
-  lastFeedback = "";
-  if (answerInputElement) answerInputElement.value = "";
-  loadCurrentQuestion();
-}
-
-function loadCurrentQuestion() {
-  let pool = questionPools[currentLevel];
-  let idx = questionOrder[questionIndexInRun];
-  currentQuestion = pool[idx];
-}
-
-// ====== 遊戲流程控制 ======
-function startLevel(level) {
-  currentLevel = level;
-  prepareRunForLevel(level);
-  gamePhase = "playing";
-}
-
-// 重新挑戰同一關
-function restartCurrentLevel() {
-  prepareRunForLevel(currentLevel);
-  gamePhase = "playing";
-}
-
-// 處理一個數值型答案（已經四捨五入）
-function checkNumericAnswer(roundedValue) {
-  if (!currentQuestion || gamePhase !== "playing") return;
-
-  if (roundedValue === currentQuestion.amount) {
-    score++;
-    lastFeedback = "答對！加油～";
-  } else {
-    health--;
-    lastFeedback = `答錯了，正確本利和是 $${currentQuestion.amount}。`;
-  }
-
-  // 檢查是否死亡
-  if (health <= 0) {
-    gamePhase = "gameOver";
-    return;
-  }
-
-  // 下一題或本關結束
-  questionIndexInRun++;
-  if (questionIndexInRun >= QUESTIONS_PER_LEVEL) {
-    gamePhase = "levelClear";
-  } else {
-    if (answerInputElement) answerInputElement.value = "";
-    loadCurrentQuestion();
-  }
-}
-
-// 通關後，決定下一步
-function proceedAfterLevelClear() {
-  if (currentLevel < 3) {
-    // 自動跳下一關
-    startLevel(currentLevel + 1);
-  } else {
-    // 第 3 關結束後，再玩一次第 3 關
-    startLevel(3);
-  }
-}
-
-// ====== 觸控與滑鼠事件處理 ======
-// 在手機／平板上，p5.js 會在觸控時更新 mouseX / mouseY，
-// touchStarted() 會被自動呼叫，更適合處理行動裝置的點擊動作。[web:21][web:25]
-function touchStarted() {
-  handleTap(mouseX, mouseY);
-  return false; // 阻止部分預設行為（例如雙指縮放）
-}
-
-// 讓桌機使用滑鼠時，也可以同樣邏輯處理
-function mousePressed() {
-  handleTap(mouseX, mouseY);
-}
-
-// 依照當前 gamePhase 解析點擊位置屬於哪個按鈕或畫面
-function handleTap(px, py) {
-  if (gamePhase === "menu" || currentLayout === null) {
-    // HTML 選單畫面時，由 HTML 按鈕處理，不在畫布上處理
-    return;
-  }
-
-  if (gamePhase === "chooseLevel") {
-    let lvl = hitTestLevelButtons(px, py);
-    if (lvl !== null) {
-      startLevel(lvl);
-    }
-    return;
-  }
-
-  // playing 階段改由 HTML 的「提交答案」按鈕處理，不在畫布上偵測點擊
-
-  if (gamePhase === "gameOver") {
-    // 失敗畫面：任何點擊重新挑戰同一關
-    restartCurrentLevel();
-    return;
-  }
-
-  if (gamePhase === "levelClear") {
-    // 通關畫面：任何點擊前往下一關或重玩第 3 關
-    proceedAfterLevelClear();
-    return;
-  }
-}
-
-// 命中測試：選關按鈕
-function hitTestLevelButtons(px, py) {
+function drawEntities() {
+  // 簡單的幾何圖形代表角色
+  let pX, pY, mX, mY, size;
+  
   if (currentLayout === "portrait") {
-    let btnW = width * 0.7;
-    let btnH = height * 0.1;
-    let startY = height * 0.32;
-    let gap = btnH * 0.25;
-    let x = width * 0.5 - btnW / 2;
-
-    for (let lvl = 1; lvl <= 3; lvl++) {
-      let y = startY + (lvl - 1) * (btnH + gap);
-      if (pointInRect(px, py, x, y, btnW, btnH)) return lvl;
-    }
+    size = width * 0.2;
+    pX = width * 0.25; pY = height * 0.65; // 勇者在左下
+    mX = width * 0.75; mY = height * 0.25; // 怪獸在右上
   } else {
-    let btnW = width * 0.32;
-    let btnH = height * 0.18;
-    let startX = width * 0.6;
-    let startY = height * 0.2;
-    let gap = height * 0.04;
-
-    for (let lvl = 1; lvl <= 3; lvl++) {
-      let x = startX;
-      let y = startY + (lvl - 1) * (btnH + gap);
-      if (pointInRect(px, py, x, y, btnW, btnH)) return lvl;
-    }
+    size = height * 0.25;
+    pX = width * 0.15; pY = height * 0.5;
+    mX = width * 0.85; mY = height * 0.5;
   }
-  return null;
+
+  // 勇者
+  fill(COLORS.player);
+  stroke(255);
+  strokeWeight(3);
+  rectMode(CENTER);
+  rect(pX, pY, size, size, 10);
+  fill(255); noStroke();
+  textAlign(CENTER, CENTER); textSize(size*0.5); text("⚔️", pX, pY);
+
+  // 怪獸
+  let mColor = getMonsterColor(currentLevel);
+  fill(mColor);
+  stroke(255);
+  rect(mX, mY, size * 1.2, size * 1.2, 20);
+  fill(255); noStroke();
+  text("🐲", mX, mY);
+  
+  rectMode(CORNER); // reset
 }
 
-function pointInRect(px, py, x, y, w, h) {
-  return px >= x && px <= x + w && py >= y && py <= y + h;
+function drawQuestionBoard() {
+  // 根據 layout 決定題目板位置
+  let qx, qy, qw, qh;
+  
+  if (currentLayout === "portrait") {
+    qx = width * 0.05;
+    qy = height * 0.35;
+    qw = width * 0.9;
+    qh = height * 0.25;
+  } else {
+    qx = width * 0.25;
+    qy = height * 0.15;
+    qw = width * 0.5;
+    qh = height * 0.6;
+  }
+
+  fill(COLORS.uiBg);
+  stroke(100);
+  strokeWeight(2);
+  rect(qx, qy, qw, qh, 15);
+
+  // 顯示題目文字
+  fill(COLORS.text);
+  noStroke();
+  textAlign(LEFT, TOP);
+  
+  let pad = 20;
+  let content = currentQuestion.text;
+  
+  textSize(min(width, height) * 0.035); // 動態字體大小
+  text(content, qx + pad, qy + pad, qw - pad*2, qh - pad*2);
 }
 
-// ====== HTML 與 p5 的互動：版面選擇與返回按鈕 ======
-// 這些函式會被 index.html 裡的按鈕 onclick 呼叫
+function drawEndScreen() {
+  fill(0, 0, 0, 200);
+  rect(0, 0, width, height);
+  
+  textAlign(CENTER, CENTER);
+  if (gamePhase === "levelClear") {
+    textSize(50); fill(50, 255, 50);
+    text("🎉 討伐成功！", width/2, height * 0.4);
+    textSize(20); fill(255);
+    text("點擊任意處繼續...", width/2, height * 0.6);
+  } else {
+    textSize(50); fill(255, 50, 50);
+    text("💀 勇者倒下了...", width/2, height * 0.4);
+    textSize(20); fill(255);
+    text("點擊任意處復活重試", width/2, height * 0.6);
+  }
+}
 
-// 開始直向模式
+// ====== 邏輯控制 ======
+
 function startPortraitLayout() {
   currentLayout = "portrait";
-  gamePhase = "chooseLevel";
-  hideMenuUI();
+  enterLevelSelect();
 }
-
-// 開始橫向模式
 function startLandscapeLayout() {
   currentLayout = "landscape";
+  enterLevelSelect();
+}
+function enterLevelSelect() {
   gamePhase = "chooseLevel";
   hideMenuUI();
+  if (backBtn) backBtn.style.display = "block";
 }
 
-// 返回版面選擇畫面（Back 按鈕）
-function goBackToMenu() {
-  // 重設主要狀態
-  currentLayout = null;
-  gamePhase = "menu";
-  currentLevel = 1;
-  health = MAX_HEALTH;
-  currentQuestion = null;
-  questionOrder = [];
-  questionIndexInRun = 0;
-  lastFeedback = "";
-  if (answerInputElement) answerInputElement.value = "";
-  calcExpression = "";
-  updateCalcDisplay();
-  calcVisible = false;
-  if (calculatorPanel) calculatorPanel.style.display = "none";
+function startLevel(lvl) {
+  currentLevel = lvl;
+  playerHP = MAX_PLAYER_HP;
+  monsterHP = MONSTER_MAX_HP;
+  generateNewQuestion();
+  gamePhase = "playing";
+  if (answerPanel) answerPanel.style.display = "flex";
+  if (answerInput) answerInput.value = "";
+}
 
+function generateNewQuestion() {
+  // 核心數學題目生成
+  let q = {};
+  let P, r, t, n, A, I;
+  
+  // 隨機輔助
+  const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  
+  // 為了讓題目數字「漂亮」一點，我們盡量湊整
+  if (currentLevel === 1) {
+    // Lv1: 簡單利息 I = Prt
+    P = rand(1, 50) * 1000; // 1000 - 50000
+    r = rand(2, 10);        // 2% - 10%
+    t = rand(1, 5);         // 1 - 5 年
+    I = P * (r/100) * t;
+    A = P + I;
+    
+    // 隨機問 I 或 A
+    if (Math.random() > 0.5) {
+      q.text = `[簡單利息]\n本金 $${P}\n年利率 ${r}%\n年期 ${t} 年\n\n求【利息】是多少？`;
+      q.answer = I;
+    } else {
+      q.text = `[簡單利息]\n本金 $${P}\n年利率 ${r}%\n年期 ${t} 年\n\n求【本利和】是多少？`;
+      q.answer = A;
+    }
+  } 
+  else if (currentLevel === 2) {
+    // Lv2: 年複利 A = P(1+r)^t
+    P = rand(1, 20) * 2000;
+    r = rand(3, 12);
+    t = rand(2, 4);
+    A = P * Math.pow(1 + r/100, t);
+    
+    q.text = `[複利 (每年)]\n本金 $${P}\n年利率 ${r}%\n年期 ${t} 年\n\n求【本利和】(四捨五入至整數)？`;
+    q.answer = Math.round(A);
+  }
+  else if (currentLevel === 3) {
+    // Lv3: 不同期複利
+    P = rand(1, 10) * 5000;
+    r = rand(4, 12); // rate per annum
+    t = rand(1, 3);  // years
+    
+    let types = [
+      { name: "半年", n: 2 },
+      { name: "每季", n: 4 },
+      { name: "每月", n: 12 },
+      { name: "每日 (假設一年365日)", n: 365 } // 每日比較難，挑戰用
+    ];
+    let type = types[Math.floor(Math.random() * types.length)];
+    n = type.n;
+    
+    A = P * Math.pow(1 + (r/100)/n, n*t);
+    
+    q.text = `[複利 (${type.name}計息)]\n本金 $${P}\n年利率 ${r}%\n年期 ${t} 年\n\n求【本利和】(四捨五入至整數)？`;
+    q.answer = Math.round(A);
+  }
+  else if (currentLevel === 4) {
+    // Lv4: 逆向問題 (Find P, r, t)
+    // 混合簡單與複利
+    let isCompound = Math.random() > 0.5;
+    let target = Math.random(); // 0-0.33: Find P, 0.33-0.66: Find r, 0.66-1: Find t
+    
+    P = rand(1, 20) * 5000;
+    r = rand(2, 10);
+    t = rand(2, 5);
+    
+    if (!isCompound) {
+      // Simple Interest Reverse
+      I = P * (r/100) * t;
+      A = P + I;
+      
+      if (target < 0.33) {
+        // Find P
+        q.text = `[簡單利息 - 求本金]\n利息 $${I}\n年利率 ${r}%\n年期 ${t} 年\n\n求【本金】(四捨五入至整數)？`;
+        q.answer = Math.round(P);
+      } else if (target < 0.66) {
+        // Find r
+        q.text = `[簡單利息 - 求利率]\n本金 $${P}\n利息 $${I}\n年期 ${t} 年\n\n求【年利率】(%)？`;
+        q.answer = r; 
+      } else {
+        // Find t
+        q.text = `[簡單利息 - 求年期]\n本金 $${P}\n利息 $${I}\n年利率 ${r}%\n\n求【年期】(年)？`;
+        q.answer = t;
+      }
+    } else {
+      // Compound Interest Reverse
+      // 為了讓數字好算，先算出 A
+      A = P * Math.pow(1 + r/100, t);
+      let roundedA = Math.round(A); 
+      // 注意：因為四捨五入 A，逆算回去可能會有誤差，我們允許誤差範圍
+      
+      if (target < 0.5) {
+        // Find P (Most common in S3)
+        q.text = `[複利 - 求本金]\n本利和 $${roundedA}\n年利率 ${r}%\n年期 ${t} 年\n\n求【本金】(四捨五入至整數)？`;
+        q.answer = P; // 檢查時我們會允許 +/- 誤差
+      } else {
+        // Find r or t (Harder)
+        // S3 學生通常用 Trial & Error 或是計算機暴力解
+        // 為了避免太難，我們提示 "整數"
+        if (Math.random() > 0.5) {
+           // Find t
+           q.text = `[複利 - 求年期]\n本金 $${P}\n本利和 $${roundedA}\n年利率 ${r}%\n\n求【年期】(整數年)？`;
+           q.answer = t;
+        } else {
+           // Find r
+           q.text = `[複利 - 求利率]\n本金 $${P}\n本利和 $${roundedA}\n年期 ${t} 年\n\n求【年利率】(整數%)？`;
+           q.answer = r;
+        }
+      }
+    }
+  }
+  
+  currentQuestion = q;
+}
+
+// ====== 答案提交 ======
+function submitTypedAnswer() {
+  if (gamePhase !== "playing" || !currentQuestion) return;
+  
+  let val = parseFloat(answerInput.value.replace(/,/g, ''));
+  if (isNaN(val)) {
+    alert("請輸入數字！");
+    return;
+  }
+  
+  // 判斷對錯 (允許小誤差，特別是 Level 4 逆運算)
+  let correct = currentQuestion.answer;
+  let isCorrect = Math.abs(val - correct) <= 1; // 容許差 1
+  
+  // 如果是 Level 4 且是求利率/年期，且答案很小，容許誤差可能要小一點？
+  // 但我們的設計是整數答案，所以 abs <= 0.5 其實就夠，<=1 很寬容
+  
+  if (isCorrect) {
+    // 攻擊成功
+    monsterHP--;
+    lastFeedback = "🔥 攻擊命中！";
+    shakeAmount = 5;
+    if (monsterHP <= 0) {
+      gamePhase = "levelClear";
+      if (answerPanel) answerPanel.style.display = "none";
+    } else {
+      generateNewQuestion();
+      answerInput.value = "";
+    }
+  } else {
+    // 攻擊失敗，受傷
+    playerHP--;
+    lastFeedback = "💔 攻擊失誤！勇者受傷！\n正確答案: " + correct;
+    shakeAmount = 20;
+    if (playerHP <= 0) {
+      gamePhase = "gameOver";
+      if (answerPanel) answerPanel.style.display = "none";
+    }
+  }
+  
+  feedbackTimer = frameCount + 90; // 顯示 1.5 秒 (60fps * 1.5)
+}
+
+// ====== 互動事件 ======
+
+function touchStarted() {
+  handleInput(mouseX, mouseY);
+  return false; // 避免 double tap zoom
+}
+
+function mousePressed() {
+  handleInput(mouseX, mouseY);
+}
+
+function handleInput(x, y) {
+  if (gamePhase === "chooseLevel") {
+    // 簡單的按鈕點擊判定
+    let levels = 4;
+    let startY = currentLayout === "portrait" ? height * 0.25 : height * 0.2;
+    let btnH = currentLayout === "portrait" ? height * 0.12 : height * 0.15;
+    let gap = 15;
+    let btnW = currentLayout === "portrait" ? width * 0.8 : width * 0.4;
+    
+    // 這裡要跟 drawLevelSelect 的座標邏輯一致
+    if (currentLayout === "landscape") {
+       for (let i = 0; i < levels; i++) {
+        let col = i % 2;
+        let row = Math.floor(i / 2);
+        let bx = width * 0.3 + col * (btnW + gap);
+        let by = startY + row * (btnH + gap);
+        if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
+          startLevel(i + 1);
+          return;
+        }
+      }
+    } else {
+      for (let i = 0; i < levels; i++) {
+        let bx = width * 0.1;
+        let by = startY + i * (btnH + gap);
+        if (x > bx && x < bx + btnW && y > by && y < by + btnH) {
+          startLevel(i + 1);
+          return;
+        }
+      }
+    }
+  }
+  else if (gamePhase === "levelClear" || gamePhase === "gameOver") {
+    // 點擊任意處重置
+    if (gamePhase === "levelClear" && currentLevel < 4) {
+      startLevel(currentLevel + 1); // 下一關
+    } else {
+      // 回選單
+      gamePhase = "chooseLevel"; 
+      if (answerPanel) answerPanel.style.display = "none";
+    }
+  }
+}
+
+function goBackToMenu() {
+  gamePhase = "menu";
   showMenuUI();
 }
 
-// 顯示 HTML 選單，隱藏返回按鈕與答案輸入區
 function showMenuUI() {
   if (layoutSelectDiv) layoutSelectDiv.style.display = "flex";
-  if (backButtonElement) backButtonElement.style.display = "none";
-  if (answerPanelElement) answerPanelElement.style.display = "none";
+  if (backBtn) backBtn.style.display = "none";
+  if (answerPanel) answerPanel.style.display = "none";
+  if (calcPanel) calcPanel.style.display = "none";
 }
 
-// 隱藏 HTML 選單，顯示返回按鈕與答案輸入區
 function hideMenuUI() {
   if (layoutSelectDiv) layoutSelectDiv.style.display = "none";
-  if (backButtonElement) backButtonElement.style.display = "block";
-  if (answerPanelElement) answerPanelElement.style.display = "flex";
 }
 
-// ====== 答案輸入與提交邏輯（由 HTML 按鈕呼叫） ======
-function submitTypedAnswer() {
-  if (gamePhase !== "playing" || !currentQuestion || !answerInputElement) return;
-
-  let raw = answerInputElement.value.trim();
-  if (!raw) {
-    lastFeedback = "請先輸入答案。";
-    return;
-  }
-
-  // 允許輸入千位分隔逗號
-  raw = raw.replace(/,/g, "");
-  let num = parseFloat(raw);
-  if (!isFinite(num)) {
-    lastFeedback = "請輸入有效的數字。";
-    return;
-  }
-
-  // 題目要求四捨五入至最接近整數
-  let rounded = Math.round(num);
-  checkNumericAnswer(rounded);
-}
-
-// ====== 虛擬計算機邏輯 ======
-// 老師可以提醒學生：使用 ^ 作為乘方運算子，例如 10000*(1+0.05)^3
+// ====== 計算機邏輯 ======
 function toggleCalculator() {
-  if (!calculatorPanel) return;
   calcVisible = !calcVisible;
-  calculatorPanel.style.display = calcVisible ? "flex" : "none";
+  calcPanel.style.display = calcVisible ? "block" : "none";
 }
-
-function updateCalcDisplay() {
-  if (!calcDisplayElement) return;
-  calcDisplayElement.textContent = calcExpression || "0";
-}
-
-function calcAppend(token) {
-  calcExpression += token;
+function calcAppend(val) {
+  calcExpression += val;
   updateCalcDisplay();
 }
-
 function calcClear() {
   calcExpression = "";
   updateCalcDisplay();
 }
-
 function calcBackspace() {
-  if (!calcExpression) return;
   calcExpression = calcExpression.slice(0, -1);
   updateCalcDisplay();
 }
-
-// 計算機按「＝」時計算結果：
-// 1. 把 ÷ 換成 /，× 換成 *
-// 2. 把 ^ 換成 **（JS 的冪次運算子）[web:28]
-// 3. 用 Function 包裝做簡單計算
+function updateCalcDisplay() {
+  calcDisplay.textContent = calcExpression || "0";
+}
 function calcEvaluate() {
-  if (!calcExpression) return;
-
-  let expr = calcExpression.replace(/÷/g, "/").replace(/×/g, "*");
-  // 只允許數字、小數點、加減乘除、括號與乘方符號，避免任意程式碼
-  let safe = expr.replace(/[^0-9+\-*/.^() ]/g, "");
-  safe = safe.replace(/\^/g, "**");
-
-  let result = null;
   try {
-    // 使用 Function 而不是直接 eval，並在 strict 模式下運算[web:28]
-    // 只處理算術運算，不允許變數與其他語法。
-    // eslint-disable-next-line no-new-func
-    result = Function('"use strict";return (' + safe + ")")();
+    // 替換符號以符合 JS 語法
+    // 支援 log(x) -> Math.log10(x) 或 Math.log(x)? 通常學校用 log10
+    // 這裡簡單實作把 log 換成 Math.log10
+    let jsExpr = calcExpression
+      .replace(/×/g, "*")
+      .replace(/÷/g, "/")
+      .replace(/\^/g, "**")
+      .replace(/log/g, "Math.log10"); 
+      
+    let res = eval(jsExpr); // 簡單 eval，注意安全性 (但在純前端小遊戲尚可)
+    // 格式化顯示 (最多 4 位小數)
+    if (!isNaN(res)) {
+        let rounded = Math.round(res * 10000) / 10000;
+        calcExpression = rounded.toString();
+    } else {
+        calcExpression = "Error";
+    }
   } catch (e) {
-    result = null;
-  }
-
-  if (typeof result === "number" && isFinite(result)) {
-    // 限制顯示位數，避免太長
-    let rounded = Math.round(result * 1000000) / 1000000;
-    calcExpression = String(rounded);
-  } else {
-    calcExpression = "";
+    calcExpression = "Error";
   }
   updateCalcDisplay();
 }
-
-// 把計算機上的結果填入答案輸入框，然後關閉計算機
 function calcFillAnswer() {
-  if (!answerInputElement) return;
-  if (!calcExpression) return;
-  answerInputElement.value = calcExpression;
+  answerInput.value = calcExpression;
   toggleCalculator();
 }
