@@ -25,4 +25,83 @@
     </p>
   </div>
 
-  <!--
+  <!-- 遊戲區域 -->
+  <div id="game-container" class="screen hidden">
+    <!-- 返回選單按鈕 -->
+    <button id="backBtn">返回選單</button>
+
+    <!-- 真正畫遊戲畫面的 Canvas -->
+    nvas id="gameeCanvas"></canvas>
+
+    <!-- HUD 介面（疊在 Canvas 上） -->
+    <div id="hud">
+      <div id="hud-top">
+        <span id="levelText"></span>
+        <span id="healthText"></span>
+        <span id="comboText"></span>
+      </div>
+      <div id="storyText"></div>
+      <div id="questionText"></div>
+
+      <!-- 普通題目輸入區 -->
+      <div id="answerArea">
+        <input id="answerInput" type="number" inputmode="decimal" placeholder="請輸入答案">
+        <button id="calcToggleBtn">計算機</button>
+        <button id="submitBtn">提交答案</button>
+      </div>
+
+      <!-- Boss 題目：方案比較 -->
+      <div id="bossChoices" class="hidden">
+        <button id="planABtn">方案 A</button>
+        <button id="planBBtn">方案 B</button>
+      </div>
+
+      <div id="feedbackText"></div>
+    </div>
+
+    <!-- 簡易科學計算機（含次方、n 次根與 Ans） -->
+    <div id="calculator" class="hidden">
+      <div id="calc-display">
+        <div id="calc-expression"></div>
+        <div id="calc-result">0</div>
+      </div>
+      <div id="calc-buttons">
+        <!-- 這些按鈕全部用 JS 綁定 click，不用任何外部函式庫 -->
+        <button data-key="7">7</button>
+        <button data-key="8">8</button>
+        <button data-key="9">9</button>
+        <button data-key="DEL">DEL</button>
+        <button data-key="C">C</button>
+
+        <button data-key="4">4</button>
+        <button data-key="5">5</button>
+        <button data-key="6">6</button>
+        <button data-key="+">+</button>
+        <button data-key="-">−</button>
+
+        <button data-key="1">1</button>
+        <button data-key="2">2</button>
+        <button data-key="3">3</button>
+        <button data-key="×">*</button>
+        <button data-key="÷">/</button>
+
+        <button data-key="0">0</button>
+        <button data-key=".">.</button>
+        <!-- 次方與 n 次根：用 y^x 及 n√x 風格 -->
+        <button data-key="^">y^x</button>
+        <button data-key="ROOT">n√x</button>
+        <button data-key="ANS">Ans</button>
+
+        <button data-key="=" class="wide">=</button>
+        <button id="calcUseBtn" class="wide">使用結果填入答案</button>
+      </div>
+    </div>
+
+    <!-- 受傷紅色閃爍遮罩 -->
+    <div id="redFlash" class="hidden"></div>
+  </div>
+
+  <!-- 主程式 -->
+  <script src="main.js"></script>
+</body>
+</html>
