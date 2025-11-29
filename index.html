@@ -1,107 +1,97 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-HK">
 <head>
-  <meta charset="utf-8">
-  <title>利息勇者：怪物之戰</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
-  <!-- 主要樣式 -->
-  <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>利息戰士 Interest Warrior</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- 版面選擇選單 -->
-  <div id="menu" class="screen">
-    <h1>利息勇者：怪物之戰</h1>
-    <p>請選擇版面方向：</p>
-    <div class="menu-buttons">
-      <button id="portraitBtn">直向（手機）</button>
-      <button id="landscapeBtn">橫向（平板）</button>
-    </div>
-    <p class="hint">
-      本遊戲共有 3 關：<br>
-      第 1 關：單利計算<br>
-      第 2 關：年複利計算<br>
-      第 3 關：半年／季度／每月／每日複利
-    </p>
-  </div>
 
-  <!-- 遊戲區域 -->
-  <div id="game-container" class="screen hidden">
-    <!-- 返回選單按鈕 -->
-    <button id="backBtn">返回選單</button>
-
-    <!-- 真正畫遊戲畫面的 Canvas -->
-    anvas id="gameCanvas"></canvas>
-
-    <!-- HUD 介面（疊在 Canvas 上） -->
-    <div id="hud">
-      <div id="hud-top">
-        <span id="levelText"></span>
-        <span id="healthText"></span>
-        <span id="comboText"></span>
-      </div>
-      <div id="storyText"></div>
-      <div id="questionText"></div>
-
-      <!-- 普通題目輸入區 -->
-      <div id="answerArea">
-        <input id="answerInput" type="number" inputmode="decimal" placeholder="請輸入答案">
-        <button id="calcToggleBtn">計算機</button>
-        <button id="submitBtn">提交答案</button>
-      </div>
-
-      <!-- Boss 題目：方案比較 -->
-      <div id="bossChoices" class="hidden">
-        <button id="planABtn">方案 A</button>
-        <button id="planBBtn">方案 B</button>
-      </div>
-
-      <div id="feedbackText"></div>
+    <!-- 1. 選單畫面 -->
+    <div id="menu">
+        <h1 class="game-title">利息戰士<br><span style="font-size:0.6em">Interest Warrior</span></h1>
+        <p style="color:#eee; margin-bottom: 20px;">中三數學：單利息與複利息</p>
+        <button id="btn-portrait" class="menu-btn">📱 直屏模式 (手機)</button>
+        <button id="btn-landscape" class="menu-btn">💻 橫屏模式 (iPad)</button>
     </div>
 
-    <!-- 簡易科學計算機（含次方、n 次根與 Ans） -->
-    <div id="calculator" class="hidden">
-      <div id="calc-display">
-        <div id="calc-expression"></div>
-        <div id="calc-result">0</div>
-      </div>
-      <div id="calc-buttons">
-        <!-- 這些按鈕全部用 JS 綁定 click，不用任何外部函式庫 -->
-        <button data-key="7">7</button>
-        <button data-key="8">8</button>
-        <button data-key="9">9</button>
-        <button data-key="DEL">DEL</button>
-        <button data-key="C">C</button>
+    <!-- 2. 遊戲容器 (包含 Canvas 和 UI) -->
+    <div id="game-container" class="hidden">
+        
+        <!-- 背景遊戲畫面 -->
+        <canvas id="gameCanvas"></canvas>
 
-        <button data-key="4">4</button>
-        <button data-key="5">5</button>
-        <button data-key="6">6</button>
-        <button data-key="+">+</button>
-        <button data-key="-">−</button>
+        <!-- 頂部資訊列 (HUD) -->
+        <div id="hud">
+            <button id="backBtn">⬅ 返回</button>
+            <div class="stats">
+                <span id="level-display">關卡: 1 (早晨)</span>
+                <span id="score-display">分數: 0</span>
+            </div>
+            <div class="health-bar" id="health-display">❤️❤️❤️❤️❤️</div>
+        </div>
 
-        <button data-key="1">1</button>
-        <button data-key="2">2</button>
-        <button data-key="3">3</button>
-        <button data-key="×">*</button>
-        <button data-key="÷">/</button>
+        <!-- 題目與輸入區域 -->
+        <div id="interaction-area">
+            <!-- 題目框 -->
+            <div id="question-box">
+                <div id="story-text">題目載入中...</div>
+                <div id="math-text" style="color: #ffd700; font-weight: bold; margin-top:5px;"></div>
+            </div>
 
-        <button data-key="0">0</button>
-        <button data-key=".">.</button>
-        <!-- 次方與 n 次根：用 y^x 及 n√x 風格 -->
-        <button data-key="^">y^x</button>
-        <button data-key="ROOT">n√x</button>
-        <button data-key="ANS">Ans</button>
+            <!-- 輸入與計算機開關 -->
+            <div class="input-row">
+                <input type="number" id="answer-input" placeholder="輸入答案 (小數後2位)" step="0.01">
+                <button id="submit-btn">攻擊!</button>
+            </div>
+            <div style="text-align: center; margin-top: 5px;">
+                <button id="toggle-calc-btn">🧮 開啟/關閉 計算機</button>
+            </div>
+        </div>
 
-        <button data-key="=" class="wide">=</button>
-        <button id="calcUseBtn" class="wide">使用結果填入答案</button>
-      </div>
+        <!-- 虛擬計算機 (仿 Casio 風格) -->
+        <div id="calculator" class="hidden">
+            <div id="calc-screen">0</div>
+            <div class="calc-grid">
+                <button class="calc-btn op" data-val="(">(</button>
+                <button class="calc-btn op" data-val=")">)</button>
+                <button class="calc-btn op" data-val="^">x^y</button>
+                <button class="calc-btn op" data-val="sqrt">y√x</button>
+                <button class="calc-btn clear" data-val="C">AC</button>
+                
+                <button class="calc-btn" data-val="7">7</button>
+                <button class="calc-btn" data-val="8">8</button>
+                <button class="calc-btn" data-val="9">9</button>
+                <button class="calc-btn op" data-val="/">÷</button>
+                <button class="calc-btn op" data-val="DEL">DEL</button>
+
+                <button class="calc-btn" data-val="4">4</button>
+                <button class="calc-btn" data-val="5">5</button>
+                <button class="calc-btn" data-val="6">6</button>
+                <button class="calc-btn op" data-val="*">×</button>
+                <button class="calc-btn op" data-val="root">√</button>
+
+                <button class="calc-btn" data-val="1">1</button>
+                <button class="calc-btn" data-val="2">2</button>
+                <button class="calc-btn" data-val="3">3</button>
+                <button class="calc-btn op" data-val="-">-</button>
+                <button class="calc-btn action" id="calc-ans">Ans</button>
+
+                <button class="calc-btn" data-val="0">0</button>
+                <button class="calc-btn" data-val=".">.</button>
+                <button class="calc-btn op" data-val="%">%</button>
+                <button class="calc-btn op" data-val="+">+</button>
+                <button class="calc-btn equals" id="calc-equals">=</button>
+            </div>
+            <button id="use-ans-btn">將計算結果填入答案</button>
+        </div>
+
+        <!-- 受傷/Combo 特效層 -->
+        <div id="feedback-overlay"></div>
+        <div id="combo-msg" class="hidden">COMBO x3! FEVER!</div>
     </div>
 
-    <!-- 受傷紅色閃爍遮罩 -->
-    <div id="redFlash" class="hidden"></div>
-  </div>
-
-  <!-- 主程式 -->
-  <script src="main.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
