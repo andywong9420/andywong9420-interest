@@ -5,94 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>利息迷宮 3D</title>
   <link rel="stylesheet" href="style.css">
+  <!-- 引入 p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
-  <!-- 版面選擇 (Menu) -->
-  <div id="layout-select" class="center-panel">
+
+  <!-- 1. 遊戲主選單 (一開始顯示) -->
+  <div id="menu-screen" class="fullscreen-ui">
     <h1>🏰 利息迷宮 3D 🏰</h1>
     <p class="subtitle">擊敗守衛，深入地下城！</p>
 
-    <button class="layout-btn" onclick="startPortraitLayout()">
-      📱 直向冒險 (手機)
-    </button>
+    <div class="btn-group">
+      <button class="menu-btn" onclick="startGame('portrait')">
+        📱 直向冒險 (手機)
+      </button>
+      <button class="menu-btn" onclick="startGame('landscape')">
+        💻 橫向冒險 (平板/電腦)
+      </button>
+    </div>
 
-    <button class="layout-btn" onclick="startLandscapeLayout()">
-      💻 橫向冒險 (平板)
-    </button>
-
-    <div class="hint">
-      <ul class="level-list">
+    <div class="info-box">
+      <p><strong>關卡說明：</strong></p>
+      <ul>
         <li>Lv1: 簡單利息 (史萊姆)</li>
         <li>Lv2: 每年複利 (骷髏兵)</li>
         <li>Lv3: 分期複利 (石像鬼)</li>
         <li>Lv4: 逆向工程 (惡龍)</li>
-        <li>Lv5: 複雜逆算 (魔王)</li>
+        <li>Lv5: 魔王級 (非年逆算)</li>
       </ul>
     </div>
   </div>
 
-  <!-- 遊戲中 UI -->
-  <button id="backButton" onclick="goBackToMenu()">🏃 逃跑</button>
+  <!-- 2. 遊戲中介面 (遊戲開始後顯示) -->
+  <div id="game-ui" class="hidden">
+    <!-- 頂部資訊列 -->
+    <div id="top-hud">
+      <button id="back-btn" onclick="backToMenu()">🏃 逃跑</button>
+      <span id="hp-display">❤️ HP: 5</span>
+      <span id="level-display">Lv: 1</span>
+    </div>
 
-  <!-- 答案輸入區 -->
-  <div id="answer-panel">
-    <input id="answerInput" type="text" inputmode="decimal" placeholder="輸入答案">
-    <button id="submitAnswerBtn" onclick="submitTypedAnswer()">⚔️ 攻擊</button>
-    <button id="toggleCalcBtn" onclick="toggleCalculator()">🧮 計算機</button>
+    <!-- 底部答案區 -->
+    <div id="bottom-panel">
+      <input id="ans-input" type="number" inputmode="decimal" placeholder="輸入答案">
+      <button id="attack-btn" onclick="submitAnswer()">⚔️ 攻擊</button>
+      <button id="calc-btn" onclick="toggleCalc()">🧮</button>
+    </div>
   </div>
 
-  <!-- 計算機 (移除 log) -->
-  <div id="calculator-panel">
-    <div id="calc-header">
+  <!-- 3. 計算機 (預設隱藏) -->
+  <div id="calc-panel" class="hidden">
+    <div class="calc-header">
       <span>RPG Calculator</span>
-      <button id="closeCalcBtn" onclick="toggleCalculator()">✕</button>
+      <button class="close-btn" onclick="toggleCalc()">✕</button>
     </div>
-    <div id="calc-display">0</div>
-    <div id="calc-buttons">
-      <div class="calc-row">
-        <button onclick="calcClear()" class="btn-red">AC</button>
-        <button onclick="calcBackspace()" class="btn-red">DEL</button>
-        <button onclick="calcAppend('(')">(</button>
-        <button onclick="calcAppend(')')">)</button>
-      </div>
-      <div class="calc-row">
-        <button onclick="calcAppend('^')">xʸ</button>
-        <button onclick="calcAppend('ˣ√')">ˣ√</button> 
-        <!-- 空格佔位，保持排版整齊 -->
-        <button style="visibility:hidden;">_</button>
-        <button onclick="calcAppend('÷')">÷</button>
-      </div>
-      <div class="calc-row">
-        <button onclick="calcAppend('7')">7</button>
-        <button onclick="calcAppend('8')">8</button>
-        <button onclick="calcAppend('9')">9</button>
-        <button onclick="calcAppend('×')">×</button>
-      </div>
-      <div class="calc-row">
-        <button onclick="calcAppend('4')">4</button>
-        <button onclick="calcAppend('5')">5</button>
-        <button onclick="calcAppend('6')">6</button>
-        <button onclick="calcAppend('-')">−</button>
-      </div>
-      <div class="calc-row">
-        <button onclick="calcAppend('1')">1</button>
-        <button onclick="calcAppend('2')">2</button>
-        <button onclick="calcAppend('3')">3</button>
-        <button onclick="calcAppend('+')">+</button>
-      </div>
-      <div class="calc-row">
-        <button onclick="calcAppend('0')">0</button>
-        <button onclick="calcAppend('.')">.</button>
-        <button onclick="calcAppendAns()" class="btn-blue">Ans</button>
-        <button onclick="calcEvaluate()" class="btn-green calc-equal">EXE</button>
-      </div>
-      <div class="calc-row">
-         <button class="calc-fill" onclick="calcFillAnswer()">填入答案</button>
-      </div>
+    <div id="calc-screen">0</div>
+    <div class="calc-grid">
+      <button onclick="calcClear()" class="c-red">AC</button>
+      <button onclick="calcDel()" class="c-red">DEL</button>
+      <button onclick="calcType('^')">xʸ</button>
+      <button onclick="calcType('÷')">÷</button>
+      
+      <button onclick="calcType('7')">7</button>
+      <button onclick="calcType('8')">8</button>
+      <button onclick="calcType('9')">9</button>
+      <button onclick="calcType('×')">×</button>
+      
+      <button onclick="calcType('4')">4</button>
+      <button onclick="calcType('5')">5</button>
+      <button onclick="calcType('6')">6</button>
+      <button onclick="calcType('-')">−</button>
+      
+      <button onclick="calcType('1')">1</button>
+      <button onclick="calcType('2')">2</button>
+      <button onclick="calcType('3')">3</button>
+      <button onclick="calcType('+')">+</button>
+      
+      <button onclick="calcType('0')">0</button>
+      <button onclick="calcType('.')">.</button>
+      <button onclick="calcType('ˣ√')">ˣ√</button>
+      <button onclick="calcEqual()" class="c-green">=</button>
     </div>
+    <button class="fill-btn" onclick="fillAns()">填入答案</button>
   </div>
 
+  <!-- 引入主程式 -->
   <script src="main.js"></script>
 </body>
 </html>
