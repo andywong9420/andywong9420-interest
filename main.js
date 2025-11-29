@@ -1,38 +1,32 @@
 // main.js
 
-// ====== 變數 ======
-let layoutSelectDiv, backBtn, answerPanel, answerInput, calcPanel, calcDisplay;
-let calcExpression = "";
-let calcVisible = false;
-
-let currentLayout = null; 
-let gamePhase = "menu"; 
+let currentLayout = null;
+let gamePhase = "menu";
 let currentLevel = 1;
 
-// 玩家狀態
+// 玩家數據
 let playerHP = 5;
 const MAX_HP = 5;
-
-// 關卡進度
 let monstersDefeated = 0;
 const MONSTERS_PER_LEVEL = 5;
 
-// 3D / 動畫狀態
-let walkAnim = 0;        // 走路動畫計數器
-let isWalking = false;   // 是否正在前往下一隻怪獸
-let monsterScale = 0;    // 怪獸大小 (0=遠, 1=面前)
-let hurtFlash = 0;       // 受傷時畫面變紅
-let attackEffect = 0;    // 攻擊特效
-
-// 當前題目
+// 題目與關卡邏輯
 let currentQuestion = null;
-let lastFeedback = "";
+let questionBatch = []; // 儲存本關 5 題的類型序列
 
-// 顏色設定
-const C_CEILING = [20, 20, 25];
-const C_FLOOR = [40, 40, 50];
-const C_WALL = [30, 30, 35];
-const C_WALL_LIGHT = [40, 40, 45];
+// 計算機記憶
+let calcLastAns = 0; // 儲存上一次 Ans
+let calcExpression = "";
+let calcVisible = false;
+
+// 視覺與動畫
+let walkAnim = 0;
+let isWalking = false;
+let hurtFlash = 0;
+let attackEffect = 0;
+
+// DOM 參照
+let layoutSelectDiv, backBtn, answerPanel, answerInput, calcPanel, calcDisplay;
 
 function setup() {
   let c = createCanvas(windowWidth, windowHeight);
@@ -48,35 +42,37 @@ function setup() {
   showMenuUI();
 }
 
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-}
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
 
 function draw() {
   if (gamePhase === "menu") {
     background(0);
-    drawRetroGrid();
+    // 簡單的網格背景
+    stroke(30);
+    for(let i=0; i<width; i+=50) line(i, 0, i, height);
+    for(let i=0; i<height; i+=50) line(0, i, width, i);
     return;
   }
 
-  // 1. 繪製 3D 場景 (背景)
+  // 偽 3D 場景
   drawFake3DWorld();
 
-  // 2. 繪製怪獸 (如果不在走路狀態且未通關)
+  // 怪物
   if (gamePhase === "playing" && !isWalking && currentQuestion) {
     drawMonster(width/2, height/2 + Math.sin(frameCount * 0.05) * 10);
   }
 
-  // 3. 繪製 UI (血量、題目)
+  // UI
   if (gamePhase === "playing") {
     drawHUD();
     if (!isWalking) drawQuestionBoard();
   }
 
-  // 4. 轉場/特效
+  // 轉場特效
   if (isWalking) updateWalkAnimation();
   if (hurtFlash > 0) {
     fill(255, 0, 0, hurtFlash);
+    noStroke();
     rect(0, 0, width, height);
     hurtFlash -= 10;
   }
@@ -87,382 +83,386 @@ function draw() {
     attackEffect -= 15;
   }
 
-  // 5. 遊戲結束/通關畫面
+  // 結束畫面
   if (gamePhase === "gameOver" || gamePhase === "levelClear") {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
     textAlign(CENTER, CENTER);
     textSize(40);
     fill(gamePhase === "levelClear" ? "#4ade80" : "#f87171");
-    text(gamePhase === "levelClear" ? "🏆 迷宮突破！" : "💀 你被打倒了...", width/2, height * 0.4);
-    textSize(20);
-    fill(200);
-    text("點擊畫面繼續", width/2, height * 0.6);
+    text(gamePhase === "levelClear" ? "🏆 通關成功！" : "💀 挑戰失敗...", width/2, height * 0.4);
+    textSize(20); fill(200);
+    text("點擊畫面回到選單", width/2, height * 0.6);
   }
 }
 
-// ====== 偽 3D 繪圖引擎 ======
-function drawFake3DWorld() {
-  // 視角晃動 (走路時)
-  let bobY = isWalking ? Math.sin(walkAnim * 0.5) * 20 : 0;
-  
-  // 地平線
-  let horizon = height / 2 + bobY;
-  
-  // 天花板
-  background(C_CEILING);
-  
-  // 地板
-  fill(C_FLOOR);
-  noStroke();
-  rect(0, horizon, width, height - horizon);
-
-  // 遠處的盡頭 (透視點)
-  let vanishW = width * 0.1;
-  let vanishH = height * 0.1;
-  let vanishX = (width - vanishW) / 2;
-  let vanishY = (height - vanishH) / 2 + bobY;
-
-  // 牆壁 (左右梯形)
-  fill(C_WALL);
-  // 左牆
-  quad(0, 0, vanishX, vanishY, vanishX, vanishY + vanishH, 0, height);
-  // 右牆
-  quad(width, 0, vanishX + vanishW, vanishY, vanishX + vanishW, vanishY + vanishH, width, height);
-
-  // 畫透視線增加速度感
-  stroke(C_WALL_LIGHT);
-  strokeWeight(2);
-  
-  // 走路時線條會移動
-  let speedOffset = isWalking ? (walkAnim * 20) % width : 0;
-  
-  // 地板線
-  for (let i = 0; i < 10; i++) {
-    let y = horizon + (i * 20 + speedOffset) * (height/200); // 簡單模擬
-    // 這裡簡化處理，只畫放射線
-    // 真正簡單的做法：畫幾條從中心射出的線
-    let lx = width/2 + (i - 5) * width * 0.4;
-    line(width/2, horizon, lx, height);
-  }
-  
-  // 盡頭黑洞
-  fill(0);
-  noStroke();
-  rect(vanishX, vanishY, vanishW, vanishH);
-}
-
-function drawMonster(x, y) {
-  // 怪獸大小：剛生成時可能小一點，這裡假設已經走到面前
-  let scale = 1; 
-  // 如果剛走路結束，可以做個放大動畫
-  
-  push();
-  translate(x, y);
-  
-  // 根據關卡畫不同怪獸
-  noStroke();
-  if (currentLevel === 1) {
-    // 史萊姆 (綠色圓形)
-    fill(50, 200, 50);
-    ellipse(0, 50, 200 * scale, 160 * scale);
-    fill(255); // 眼白
-    ellipse(-40, 30, 40, 40);
-    ellipse(40, 30, 40, 40);
-    fill(0); // 眼珠
-    ellipse(-40, 30, 15, 15);
-    ellipse(40, 30, 15, 15);
-  } else if (currentLevel === 2) {
-    // 骷髏 (灰色方形)
-    fill(180);
-    rectMode(CENTER);
-    rect(0, 0, 180, 220, 20);
-    fill(0);
-    ellipse(-40, -20, 50, 50); // 眼窩
-    ellipse(40, -20, 50, 50);
-    rect(0, 60, 100, 20); // 嘴
-  } else if (currentLevel === 3) {
-    // 石像鬼 (紫色三角)
-    fill(120, 50, 180);
-    triangle(0, -150, -120, 100, 120, 100);
-    fill(255, 255, 0);
-    ellipse(-30, -20, 30, 50);
-    ellipse(30, -20, 30, 50);
-  } else {
-    // 惡龍 (紅色大圓 + 角)
-    fill(200, 30, 30);
-    ellipse(0, 0, 280, 300);
-    fill(50); // 角
-    triangle(-80, -120, -120, -200, -40, -140);
-    triangle(80, -120, 120, -200, 40, -140);
-    fill(255, 200, 0); // 眼
-    ellipse(-60, -30, 40, 60);
-    ellipse(60, -30, 40, 60);
-    fill(0);
-    rect(0, 0, 10, 40); // 瞳孔
-  }
-  
-  pop();
-}
-
-function drawHUD() {
-  // 抬頭顯示器
-  fill(0, 255, 0);
-  textSize(16);
-  textAlign(LEFT, TOP);
-  text(`HP: ${playerHP}/${MAX_HP}`, 20, 20);
-  
-  textAlign(RIGHT, TOP);
-  text(`MONSTERS: ${monstersDefeated}/${MONSTERS_PER_LEVEL}`, width - 20, 20);
-  
-  // 畫生命條
-  noStroke();
-  fill(100, 0, 0);
-  rect(20, 45, 150, 10);
-  fill(0, 200, 0);
-  rect(20, 45, 150 * (playerHP/MAX_HP), 10);
-}
-
-function drawQuestionBoard() {
-  // 題目板顯示在畫面下方或半透明浮動
-  let bw = width * 0.9;
-  let bh = height * 0.35;
-  let bx = width * 0.05;
-  let by = height * 0.15; // 顯示在上方，避免擋住怪獸
-
-  fill(0, 0, 0, 200);
-  stroke(0, 255, 0);
-  strokeWeight(2);
-  rect(bx, by, bw, bh, 10);
-
-  fill(0, 255, 0);
-  noStroke();
-  textAlign(LEFT, TOP);
-  textSize(min(width, height) * 0.035);
-  
-  let pad = 20;
-  if (currentQuestion) {
-    text(currentQuestion.text, bx + pad, by + pad, bw - pad*2, bh - pad*2);
-  }
-  
-  // 狀態訊息
-  if (lastFeedback) {
-    textAlign(CENTER, BOTTOM);
-    fill(255, 255, 0);
-    text(lastFeedback, width/2, by + bh + 30);
-  }
-}
-
-function drawRetroGrid() {
-  stroke(0, 50, 0);
-  for(let i=0; i<width; i+=40) line(i, 0, i, height);
-  for(let i=0; i<height; i+=40) line(0, i, width, i);
-}
-
-// ====== 遊戲邏輯 ======
-
-function updateWalkAnimation() {
-  walkAnim++;
-  if (walkAnim > 60) { // 走 1 秒
-    isWalking = false;
-    walkAnim = 0;
-    generateNewQuestion();
-    answerInput.focus();
-  }
-}
-
-function startPortraitLayout() { currentLayout = "portrait"; startGame(); }
-function startLandscapeLayout() { currentLayout = "landscape"; startGame(); }
-
-function startGame() {
-  gamePhase = "chooseLevel"; // 其實這裡應該直接進選關，但為求簡化，我們預設跳出 1-4 關按鈕
-  // 為了符合上一版的結構，我們先做一個簡單的關卡選單
-  // 但因為要求 "Forward"，這裡設計成：點按鈕選關 -> 進迷宮 -> 殺 5 隻
-  
-  // 重用上一版的 HTML/Canvas 混合選單邏輯會比較亂，這裡直接用 Canvas 畫選單
-}
-
-// 複寫 draw 裡的 menu 邏輯，這裡簡單處理：
-// 如果 gamePhase 是 chooseLevel，顯示 4 個按鈕
-// 為了代碼簡潔，我們將 chooseLevel 整合進 drawFake3DWorld 上層
-
-// 為了讓 index.html 裡的按鈕生效，我們需要：
-// 1. 隱藏 HTML 選單
-// 2. 顯示關卡選擇 (Canvas)
-
-function enterLevelSelect() {
-  gamePhase = "chooseLevel";
-  hideMenuUI();
-  if (backBtn) backBtn.style.display = "block";
-}
-
-// 修正 index.html 按鈕呼叫
-window.startPortraitLayout = function() { currentLayout = "portrait"; enterLevelSelect(); };
-window.startLandscapeLayout = function() { currentLayout = "landscape"; enterLevelSelect(); };
-
-// 關卡選擇繪製 (在 draw 裡呼叫)
-// 這裡我們用 draw 的邏輯來蓋掉
-let originalDraw = draw;
-draw = function() {
-  if (gamePhase === "chooseLevel") {
-    background(0);
-    textAlign(CENTER);
-    fill(255);
-    textSize(30);
-    text("選擇樓層", width/2, height * 0.2);
-    
-    let btnH = height * 0.15;
-    for(let i=1; i<=4; i++) {
-      let y = height * 0.3 + (i-1)*(btnH + 10);
-      fill(40); stroke(255);
-      rect(width*0.1, y, width*0.8, btnH, 10);
-      fill(255); noStroke();
-      text(`Level ${i}`, width/2, y + btnH/2 + 10);
-    }
-    return;
-  }
-  originalDraw();
-};
-
-// 處理點擊選關
-function mousePressed() {
-  handleInput(mouseX, mouseY);
-}
-function touchStarted() {
-  handleInput(mouseX, mouseY);
-  return false;
-}
-
-function handleInput(x, y) {
-  if (gamePhase === "chooseLevel") {
-    let btnH = height * 0.15;
-    for(let i=1; i<=4; i++) {
-      let by = height * 0.3 + (i-1)*(btnH + 10);
-      if (y > by && y < by + btnH) {
-        startLevel(i);
-      }
-    }
-  } else if (gamePhase === "gameOver" || gamePhase === "levelClear") {
-    // 重置
-    gamePhase = "chooseLevel";
-    if (answerPanel) answerPanel.style.display = "none";
-  }
-}
+// ====== 關卡與題目生成 ======
 
 function startLevel(lvl) {
   currentLevel = lvl;
   playerHP = MAX_HP;
   monstersDefeated = 0;
-  monstersToKill = 5;
+  
+  // 預先生成本關 5 題的「題型」，確保分佈均勻
+  generateQuestionBatch(lvl);
+  
   gamePhase = "playing";
-  isWalking = true; // 一開始先走一段路
+  isWalking = true;
   walkAnim = 0;
+  
   if (answerPanel) answerPanel.style.display = "flex";
-  if (answerInput) answerInput.value = "";
+  answerInput.value = "";
+}
+
+function generateQuestionBatch(lvl) {
+  questionBatch = [];
+  
+  if (lvl < 4) {
+    // Lv1-3 都是求本利和 (FindA)
+    for(let i=0; i<5; i++) questionBatch.push("FindA");
+  } 
+  else if (lvl === 4) {
+    // Lv4: 簡單/複利混合，求 P, r, t (確保各出現一次)
+    let types = ["FindP", "FindR", "FindT"];
+    // 剩下 2 題隨機
+    types.push(["FindP", "FindR", "FindT"][Math.floor(Math.random()*3)]);
+    types.push(["FindP", "FindR", "FindT"][Math.floor(Math.random()*3)]);
+    
+    // 洗牌
+    shuffleArray(types);
+    questionBatch = types;
+  }
+  else if (lvl === 5) {
+    // Lv5: 複雜複利，求 P, r, t
+    let types = ["FindP", "FindR", "FindT"];
+    types.push(["FindP", "FindR", "FindT"][Math.floor(Math.random()*3)]);
+    types.push(["FindP", "FindR", "FindT"][Math.floor(Math.random()*3)]);
+    shuffleArray(types);
+    questionBatch = types;
+  }
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
 }
 
 function generateNewQuestion() {
-  // 題目生成邏輯 (與上一版類似，但加入 Nth Root 提示)
-  const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  // 從批次中取出一種類型
+  let type = questionBatch[monstersDefeated];
   let q = {};
-  let P, r, t, A, I;
+  const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-  if (currentLevel === 1) { // 簡單利息
-    P = rand(1, 20) * 1000; r = rand(2, 8); t = rand(1, 5);
-    I = P * r * t / 100;
-    q.text = `[Lv1 史萊姆]\n本金 $${P}, 年利率 ${r}%, ${t}年\n求單利息 I？`;
+  // 參數生成
+  let P = rand(1, 20) * 10000;
+  let r = rand(3, 12);
+  let t = rand(2, 6); // 年期
+  
+  // 根據關卡調整計算方式
+  if (currentLevel === 1) {
+    // 簡單利息
+    let I = P * r * t / 100;
+    q.text = `[Lv1 史萊姆] 簡單利息\nP=$${P}, r=${r}%, t=${t}年\n求單利息 I？`;
     q.answer = I;
-  } else if (currentLevel === 2) { // 年複利
-    P = rand(2, 10) * 5000; r = rand(2, 10); t = rand(2, 4);
-    A = Math.round(P * Math.pow(1 + r/100, t));
-    q.text = `[Lv2 骷髏]\n本金 $${P}, ${r}%, ${t}年 (每年複利)\n求本利和 A？`;
+  } 
+  else if (currentLevel === 2) {
+    // 年複利
+    let A = Math.round(P * Math.pow(1 + r/100, t));
+    q.text = `[Lv2 骷髏] 每年複利\nP=$${P}, r=${r}%, t=${t}年\n求本利和 A？`;
     q.answer = A;
-  } else if (currentLevel === 3) { // 複利 (月/季)
-    P = rand(5, 20) * 1000; r = rand(4, 12); t = rand(1, 3);
-    let n = Math.random()>0.5 ? 12 : 4;
-    A = Math.round(P * Math.pow(1 + (r/100)/n, n*t));
-    let period = n==12 ? "每月" : "每季";
-    q.text = `[Lv3 石像鬼]\n本金 $${P}, ${r}%, ${t}年\n(${period}計息)\n求本利和 A？`;
-    q.answer = A;
-  } else { // 逆向工程
-    // 為了讓 Nth Root 有用，我們出一題求利率 r 的
-    // A = P(1+r)^t  =>  1+r = (A/P)^(1/t) => r = (A/P)^(1/t) - 1
-    P = rand(1, 10) * 10000;
-    r = rand(3, 10); // 答案是整數
-    t = rand(2, 5);
-    A = Math.round(P * Math.pow(1 + r/100, t)); // 因為四捨五入 A，逆算會有小誤差
-    
-    q.text = `[Lv4 惡龍]\n本金 $${P}, 本利和 $${A}, ${t}年\n(每年複利)\n求年利率 r (%)？\n提示：利用計算機的 ⁿ√x`;
-    q.answer = r;
   }
+  else if (currentLevel === 3) {
+    // 分期複利 (Find A)
+    let n = Math.random() > 0.5 ? 12 : 4;
+    let A = Math.round(P * Math.pow(1 + (r/100)/n, n*t));
+    let period = n===12 ? "每月" : "每季";
+    q.text = `[Lv3 石像鬼] ${period}複利\nP=$${P}, r=${r}%, t=${t}年\n求本利和 A？`;
+    q.answer = A;
+  }
+  else if (currentLevel === 4) {
+    // 簡單/複利混合，逆運算
+    // 隨機決定這題是 Simple 還是 Compound
+    let isSimple = Math.random() > 0.5;
+    
+    if (isSimple) {
+      // I = Prt/100, A = P + I
+      let I = P * r * t / 100;
+      let A = P + I;
+      
+      if (type === "FindP") {
+        q.text = `[Lv4 惡龍] 簡單利息\nI=$${I}, r=${r}%, t=${t}年\n求本金 P？`;
+        q.answer = P;
+      } else if (type === "FindR") {
+        q.text = `[Lv4 惡龍] 簡單利息\nP=$${P}, I=$${I}, t=${t}年\n求利率 r (%)？`;
+        q.answer = r;
+      } else { // FindT
+        q.text = `[Lv4 惡龍] 簡單利息\nP=$${P}, I=$${I}, r=${r}%\n求年期 t (年)？`;
+        q.answer = t;
+      }
+    } else {
+      // 複利 A = P(1+r%)^t
+      let A = Math.round(P * Math.pow(1 + r/100, t));
+      
+      if (type === "FindP") {
+        q.text = `[Lv4 惡龍] 每年複利\nA=$${A}, r=${r}%, t=${t}年\n求本金 P？`;
+        q.answer = P;
+      } else if (type === "FindR") {
+        q.text = `[Lv4 惡龍] 每年複利\nP=$${P}, A=$${A}, t=${t}年\n求利率 r (%)？\n提示：利用 ˣ√`;
+        q.answer = r;
+      } else { // FindT
+        q.text = `[Lv4 惡龍] 每年複利\nP=$${P}, A=$${A}, r=${r}%\n求年期 t (年)？`;
+        q.answer = t;
+      }
+    }
+  }
+  else if (currentLevel === 5) {
+    // Lv5: 複雜複利 A = P(1 + r/n)^(nt)
+    // 隨機 n: 半年(2), 季(4), 月(12), 日(365)
+    let options = [2, 4, 12, 365];
+    let n = options[Math.floor(Math.random() * options.length)];
+    let nName = {2:"半年", 4:"每季", 12:"每月", 365:"每日"}[n];
+    
+    // 重新微調參數避免數字太醜
+    // 如果是每日，年期短一點
+    if (n === 365) t = rand(1, 2);
+    
+    let A = Math.round(P * Math.pow(1 + (r/100)/n, n*t));
+    
+    if (type === "FindP") {
+      q.text = `[Lv5 魔王] ${nName}複利\nA=$${A}, r=${r}%, t=${t}年\n求本金 P？`;
+      q.answer = P;
+    } else if (type === "FindR") {
+      q.text = `[Lv5 魔王] ${nName}複利\nP=$${P}, A=$${A}, t=${t}年\n求年利率 r (%)？`;
+      q.answer = r;
+    } else { // FindT
+      q.text = `[Lv5 魔王] ${nName}複利\nP=$${P}, A=$${A}, r=${r}%\n求年期 t (年)？`;
+      q.answer = t;
+    }
+  }
+  
   currentQuestion = q;
 }
 
+// ====== 3D 繪圖 (簡化版) ======
+function drawFake3DWorld() {
+  let bobY = isWalking ? Math.sin(walkAnim * 0.5) * 15 : 0;
+  let h = height/2 + bobY;
+  
+  background(20);
+  fill(40); noStroke();
+  rect(0, h, width, height-h); // 地板
+  
+  // 盡頭
+  let vw = width * 0.15, vh = height * 0.15;
+  let vx = (width-vw)/2, vy = h - vh/2;
+  
+  // 牆壁透視線
+  stroke(60); strokeWeight(2);
+  line(0, 0, vx, vy);
+  line(width, 0, vx+vw, vy);
+  line(0, height, vx, vy+vh);
+  line(width, height, vx+vw, vy+vh);
+  
+  fill(0); noStroke();
+  rect(vx, vy, vw, vh);
+}
+
+function drawMonster(x, y) {
+  // 根據關卡畫簡單怪獸圖示
+  let s = 200;
+  push(); translate(x, y);
+  textAlign(CENTER, CENTER); textSize(s);
+  if (currentLevel===1) text("💧", 0, 0);
+  else if (currentLevel===2) text("💀", 0, 0);
+  else if (currentLevel===3) text("👿", 0, 0);
+  else if (currentLevel===4) text("🐲", 0, 0);
+  else text("👹", 0, 0);
+  pop();
+}
+
+// ====== 互動邏輯 ======
+
 function submitTypedAnswer() {
   if (!currentQuestion || isWalking) return;
-  
-  let val = parseFloat(answerInput.value);
+  let val = parseFloat(answerInput.value.replace(/,/g, ''));
   if (isNaN(val)) return;
   
-  // 容錯
-  let correct = currentQuestion.answer;
-  let isCorrect = Math.abs(val - correct) <= (currentLevel === 4 ? 0.5 : 1);
+  // 驗算：Lv4/Lv5 逆運算容許較大誤差 (因為 A 是四捨五入後的)
+  // 如果是 P (本金)，誤差可容許 10 左右；如果是 r 或 t，容許 0.5
+  let margin = 1;
+  if (currentLevel >= 4) {
+    // 簡單判斷：如果答案很大(>100)可能是本金，容許誤差大點
+    if (currentQuestion.answer > 100) margin = 50; 
+    else margin = 0.5;
+  }
   
-  if (isCorrect) {
-    // 殺怪
-    attackEffect = 255; // 閃白光
+  if (Math.abs(val - currentQuestion.answer) <= margin) {
     monstersDefeated++;
-    lastFeedback = "擊殺！";
-    
+    attackEffect = 255;
     if (monstersDefeated >= MONSTERS_PER_LEVEL) {
       gamePhase = "levelClear";
-      if (answerPanel) answerPanel.style.display = "none";
+      answerPanel.style.display = "none";
     } else {
-      isWalking = true; // 前進動畫
-      walkAnim = 0;
-      currentQuestion = null; // 清空題目等待下一隻
+      isWalking = true; walkAnim = 0;
+      currentQuestion = null;
       answerInput.value = "";
     }
   } else {
-    // 受傷
     playerHP--;
-    hurtFlash = 150; // 閃紅光
-    lastFeedback = `錯誤！再試一次。`;
+    hurtFlash = 150;
     if (playerHP <= 0) {
       gamePhase = "gameOver";
-      if (answerPanel) answerPanel.style.display = "none";
+      answerPanel.style.display = "none";
     }
   }
 }
 
-// 計算機功能
+function updateWalkAnimation() {
+  walkAnim++;
+  if (walkAnim > 40) {
+    isWalking = false;
+    generateNewQuestion();
+  }
+}
+
+// ====== 計算機核心邏輯 ======
+
 function toggleCalculator() {
   calcVisible = !calcVisible;
   calcPanel.style.display = calcVisible ? "block" : "none";
 }
-function calcAppend(v) { calcExpression += v; updateCalc(); }
-function calcClear() { calcExpression = ""; updateCalc(); }
-function calcBackspace() { calcExpression = calcExpression.slice(0,-1); updateCalc(); }
-function updateCalc() { calcDisplay.textContent = calcExpression || "0"; }
+
+function calcAppend(val) {
+  calcExpression += val;
+  updateCalcDisplay();
+}
+
+function calcAppendAns() {
+  calcExpression += "Ans";
+  updateCalcDisplay();
+}
+
+function calcClear() { calcExpression = ""; updateCalcDisplay(); }
+function calcBackspace() { calcExpression = calcExpression.slice(0, -1); updateCalcDisplay(); }
+
+function updateCalcDisplay() {
+  calcDisplay.textContent = calcExpression || "0";
+}
+
 function calcEvaluate() {
   try {
-    // 處理 Nth Root: 其實就是 ^(1/n)
-    // 介面上我們讓使用者輸入 ^(1/n) 
-    // 所以這裡只需要處理標準 JS 運算
-    let expr = calcExpression.replace(/×/g, "*").replace(/÷/g, "/").replace(/\^/g, "**");
-    let res = eval(expr);
-    calcExpression = String(Math.round(res * 10000) / 10000);
-  } catch(e) {
+    let expr = calcExpression;
+    
+    // 1. 替換 Ans
+    expr = expr.replace(/Ans/g, calcLastAns);
+    
+    // 2. 處理 Casio ˣ√ (例如 3ˣ√8 -> 8^(1/3))
+    // 正則：找 (數字)ˣ√(數字)
+    // 注意：簡單實作，不支援巢狀括號內的 ˣ√，只支援簡單數字或小數
+    // 我們先處理 ˣ√，將 Aˣ√B 轉為 Math.pow(B, 1/A)
+    // 這裡做一個簡單的替換：
+    // 假設使用者輸入格式良好，例如 "3ˣ√8" 或 "(1+2)ˣ√8" 比較難解
+    // 這裡採用簡單策略：把 ˣ√ 換成特殊的運算邏輯
+    
+    // 為了讓 eval 執行，我們先把常見符號換掉
+    expr = expr.replace(/×/g, "*").replace(/÷/g, "/").replace(/\^/g, "**");
+    expr = expr.replace(/log/g, "Math.log10");
+    
+    // 處理 ˣ√ : 找到 `a ˣ√ b` 模式
+    // 由於 JS regex 不支援由右向左運算，我們簡單將 split
+    if (expr.includes("ˣ√")) {
+      let parts = expr.split("ˣ√");
+      if (parts.length === 2) {
+        // 假設只有一個 root 運算
+        let root = parts[0];
+        let base = parts[1];
+        // 這裡假設 root 和 base 都是可 eval 的表達式
+        expr = `Math.pow(${base}, 1/(${root}))`;
+      }
+    }
+    
+    let result = eval(expr);
+    
+    if (isFinite(result)) {
+      calcLastAns = result; // 存入 Ans
+      // 四捨五入顯示
+      calcExpression = String(Math.round(result * 100000) / 100000);
+    } else {
+      calcExpression = "Error";
+    }
+  } catch (e) {
     calcExpression = "Error";
   }
-  updateCalc();
+  updateCalcDisplay();
 }
+
 function calcFillAnswer() {
   answerInput.value = calcExpression;
   toggleCalculator();
 }
 
-// HTML UI 控制
-function hideMenuUI() { layoutSelectDiv.style.display = "none"; }
-function showMenuUI() { layoutSelectDiv.style.display = "flex"; backBtn.style.display = "none"; answerPanel.style.display="none"; }
-function goBackToMenu() { gamePhase="menu"; showMenuUI(); }
+// UI 選單控制 (覆蓋上一版)
+function startPortraitLayout() { currentLayout = "portrait"; enterLevelSelect(); }
+function startLandscapeLayout() { currentLayout = "landscape"; enterLevelSelect(); }
+
+function enterLevelSelect() {
+  gamePhase = "chooseLevel";
+  layoutSelectDiv.style.display = "none";
+}
+
+// 覆寫 draw 處理選單
+let _draw = draw;
+draw = function() {
+  if (gamePhase === "chooseLevel") {
+    background(10);
+    textAlign(CENTER); fill(255); textSize(30);
+    text("選擇樓層", width/2, height*0.15);
+    
+    let btnH = height * 0.12;
+    for(let i=1; i<=5; i++) {
+      let y = height * 0.2 + (i-1)*(btnH + 10);
+      fill(40); stroke(100); rect(width*0.1, y, width*0.8, btnH, 10);
+      fill(255); noStroke();
+      text(`Level ${i}`, width/2, y + btnH/2 + 8);
+    }
+    return;
+  }
+  _draw();
+}
+
+function mousePressed() { handleInput(mouseX, mouseY); }
+function touchStarted() { handleInput(mouseX, mouseY); return false; }
+
+function handleInput(x, y) {
+  if (gamePhase === "chooseLevel") {
+    let btnH = height * 0.12;
+    for(let i=1; i<=5; i++) {
+      let by = height * 0.2 + (i-1)*(btnH + 10);
+      if (y > by && y < by + btnH) startLevel(i);
+    }
+  } else if (gamePhase === "gameOver" || gamePhase === "levelClear") {
+    gamePhase = "chooseLevel"; answerPanel.style.display = "none";
+  }
+}
+
+function drawHUD() {
+  fill(0, 255, 0); textSize(16); textAlign(LEFT, TOP);
+  text(`HP: ${playerHP}`, 20, 20);
+  text(`LV: ${currentLevel}`, 80, 20);
+}
+
+function drawQuestionBoard() {
+  let h = height * 0.35;
+  fill(0,0,0,200); stroke(0,255,0); rect(width*0.05, height*0.1, width*0.9, h, 10);
+  fill(255); noStroke(); textAlign(LEFT, TOP); textSize(18);
+  if (currentQuestion) text(currentQuestion.text, width*0.08, height*0.12, width*0.84);
+}
+
+function goBackToMenu() {
+  gamePhase = "menu";
+  layoutSelectDiv.style.display = "flex";
+  backBtn.style.display = "none";
+  answerPanel.style.display = "none";
+}
