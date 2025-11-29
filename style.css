@@ -1,133 +1,80 @@
 /* style.css */
 html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: #050505;
-  color: #ddd;
-  font-family: 'Courier New', Courier, monospace; /* 復古電腦風格 */
-  overflow: hidden;
-  touch-action: none;
+  margin: 0; padding: 0; height: 100%;
+  background: #050505; color: #ddd;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden; touch-action: none;
 }
 
 #layout-select {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0,0,0,0.9);
-  z-index: 50;
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  background: rgba(0,0,0,0.95); z-index: 50;
   text-align: center;
 }
-
-#layout-select h1 {
-  font-size: 2.5rem;
-  color: #ef4444;
-  text-shadow: 2px 2px 0px #7f1d1d;
-  margin-bottom: 10px;
-}
+#layout-select h1 { font-size: 2.5rem; color: #fbbf24; margin-bottom: 10px; }
+.level-list { text-align: left; display: inline-block; color: #9ca3af; font-size: 0.9rem; padding: 0; list-style: none; }
+.level-list li { margin: 5px 0; }
 
 .layout-btn {
-  width: 260px;
-  padding: 15px;
-  margin: 10px;
-  font-size: 1.2rem;
-  background: #333;
-  color: #fff;
-  border: 2px solid #666;
-  cursor: pointer;
-  font-family: inherit;
-}
-.layout-btn:active {
-  background: #555;
-  transform: translateY(2px);
+  width: 260px; padding: 15px; margin: 10px;
+  font-size: 1.1rem; background: #1f2937; color: #fbbf24;
+  border: 1px solid #4b5563; border-radius: 8px;
+  cursor: pointer; font-weight: bold;
 }
 
 #backButton {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  padding: 8px 12px;
-  background: #b91c1c;
-  color: white;
-  border: 1px solid #fff;
-  z-index: 40;
-  display: none;
-  font-family: inherit;
-  cursor: pointer;
+  position: fixed; top: 10px; left: 10px;
+  padding: 8px 15px; background: #dc2626; color: white;
+  border: none; border-radius: 5px; z-index: 40; display: none;
 }
 
-/* 答案區 - 放在底部 */
 #answer-panel {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  background: rgba(20, 20, 20, 0.9);
-  border-top: 2px solid #444;
-  padding: 15px 10px;
-  display: none;
-  justify-content: center;
-  gap: 10px;
-  z-index: 40;
+  position: fixed; bottom: 0; width: 100%;
+  background: #111; border-top: 1px solid #333;
+  padding: 15px; display: none; justify-content: center; gap: 8px; z-index: 40;
   box-sizing: border-box;
 }
-
 #answerInput {
-  width: 120px;
-  padding: 10px;
-  font-size: 1.1rem;
-  background: #000;
-  color: #0f0; /* 綠色終端機文字 */
-  border: 1px solid #555;
-  font-family: inherit;
+  width: 100px; padding: 10px; font-size: 1.1rem;
+  background: #222; color: white; border: 1px solid #444; border-radius: 5px;
 }
-
 #submitAnswerBtn {
-  background: #166534;
-  color: #fff;
-  border: 1px solid #22c55e;
-  padding: 10px 20px;
-  font-size: 1rem;
-  cursor: pointer;
-  font-family: inherit;
+  background: #16a34a; color: white; border: none; padding: 10px 20px;
+  border-radius: 5px; cursor: pointer; font-weight: bold;
 }
-
 #toggleCalcBtn {
-  background: #1e3a8a;
-  color: #fff;
-  border: 1px solid #60a5fa;
-  padding: 10px;
-  cursor: pointer;
-  font-family: inherit;
+  background: #2563eb; color: white; border: none; padding: 10px;
+  border-radius: 5px; cursor: pointer;
 }
 
-/* 計算機樣式 - 保持實用 */
+/* 計算機 */
 #calculator-panel {
-  position: fixed;
-  top: 50%; left: 50%;
+  position: fixed; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 300px;
-  background: #222;
-  border: 2px solid #666;
-  box-shadow: 0 0 20px #000;
-  display: none;
-  z-index: 100;
+  width: 320px; background: #1f2937;
+  border: 2px solid #4b5563; border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  display: none; z-index: 100;
+}
+#calc-header {
+  padding: 10px; background: #111827; color: #9ca3af;
+  display: flex; justify-content: space-between; border-radius: 8px 8px 0 0;
 }
 #calc-display {
-  background: #111;
-  color: #0f0;
-  font-size: 1.4rem;
-  padding: 15px;
-  text-align: right;
-  border-bottom: 1px solid #444;
+  background: #374151; color: #fff; font-family: 'Courier New', monospace;
+  font-size: 1.5rem; padding: 15px; text-align: right; letter-spacing: 1px;
+  overflow: hidden; white-space: nowrap;
 }
 #calc-buttons { padding: 10px; display: flex; flex-direction: column; gap: 5px; }
 .calc-row { display: flex; gap: 5px; }
 #calc-buttons button {
-  flex: 1; padding: 12px; background: #333; color: #ddd;
-  border: 1px solid #444; cursor: pointer; font-size: 1.1rem;
+  flex: 1; padding: 12px 0; background: #374151; color: white;
+  border: 1px solid #1f2937; border-radius: 4px; cursor: pointer; font-size: 1rem;
 }
-#calc-buttons button:active { background: #555; }
-.calc-equal { background: #ca8a04 !important; color: #000 !important; }
+#calc-buttons button:active { background: #4b5563; }
+.btn-red { background: #7f1d1d !important; }
+.btn-blue { background: #1e3a8a !important; }
+.btn-green { background: #14532d !important; }
+.calc-fill { background: #0891b2 !important; width: 100%; }
