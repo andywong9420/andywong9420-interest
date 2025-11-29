@@ -1,291 +1,304 @@
-/* Google Pixel 風格字型（可線上載入） */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
+/* 重置與基礎設定 */
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+    user-select: none; /* 防止長按選取文字 */
+    -webkit-user-select: none;
 }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-  color: #fff;
-  font-family: "Press Start 2P", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #111;
+    font-family: 'Courier New', Courier, monospace; /* 復古像素感字體 */
+    overflow: hidden; /* 防止捲動 */
 }
 
-.screen {
-  width: 100%;
-  height: 100%;
-}
-
-/* 主選單置中與大按鈕，方便觸控 */
-#menu {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 20px;
-  background: radial-gradient(circle at top, #334, #000);
-}
-
-#menu h1 {
-  font-size: 1.2rem;
-  margin-bottom: 20px;
-}
-
-#menu p {
-  margin: 6px 0;
-  line-height: 1.4;
-}
-
-.menu-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 16px 0;
-}
-
-#menu button {
-  padding: 14px 24px;
-  font-size: 0.9rem;
-  border-radius: 8px;
-  border: none;
-  background: #ffcc33;
-  color: #000;
-  cursor: pointer;
-}
-
-#menu button:active {
-  transform: translateY(2px);
-  background: #ffdd66;
-}
-
-.hint {
-  font-size: 0.7rem;
-  opacity: 0.8;
-}
-
-/* 隱藏用通用 class */
-.hidden {
-  display: none !important;
-}
-
-/* 遊戲容器鋪滿畫面，用來放 Canvas + HUD */
-#game-container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* Canvas 要擋掉滾動畫面（搭配 JS preventDefault） */
+/* 畫布設定 */
 canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none; /* 減少觸控捲動／縮放干擾，部分瀏覽器需搭配 JS 處理 */ 
-  user-select: none;
+    display: block;
+    touch-action: none; /* 禁止 Canvas 上的預設觸控行為 */
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
 }
 
-/* 返回按鈕：固定在左上角 */
-#backBtn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 20;
-  padding: 8px 10px;
-  font-size: 0.6rem;
-  border-radius: 6px;
-  border: none;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  cursor: pointer;
+/* 隱藏元素 */
+.hidden {
+    display: none !important;
 }
 
-/* HUD 疊在畫面上方（不遮擋返回鍵） */
+/* 1. 選單樣式 */
+#menu {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    z-index: 10;
+}
+
+.game-title {
+    color: #fff;
+    text-align: center;
+    text-shadow: 4px 4px 0px #000;
+    font-size: 2.5rem;
+    margin-bottom: 30px;
+}
+
+.menu-btn {
+    background: #4CAF50;
+    color: white;
+    border: 4px solid #2E7D32;
+    padding: 15px 30px;
+    margin: 10px;
+    font-size: 1.2rem;
+    font-family: inherit;
+    cursor: pointer;
+    width: 80%;
+    max-width: 300px;
+    border-radius: 8px;
+    box-shadow: 0 6px #1B5E20;
+    transition: transform 0.1s;
+}
+
+.menu-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px #1B5E20;
+}
+
+/* 2. 遊戲介面 UI */
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 #hud {
-  position: absolute;
-  inset: 0;
-  padding: 40px 10px 10px 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  pointer-events: none; /* 先全部關掉，底下針對按鈕再開啟 */
-  z-index: 10;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 5;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-weight: bold;
 }
 
-/* 直向模式：HUD 主要在下方 */
-#game-container.portrait #hud {
-  align-items: stretch;
+#backBtn {
+    background: #f44336;
+    border: 2px solid white;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
 }
 
-/* 橫向模式：HUD 往右邊排列，保留中間給畫面 */
-#game-container.landscape #hud {
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding: 20px;
+.health-bar {
+    color: #ff4444;
+    font-size: 1.2rem;
+    text-shadow: 2px 2px 0 #000;
 }
 
-/* HUD 上面一排：關卡、血量、連擊 */
-#hud-top {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  margin-bottom: 6px;
-  pointer-events: auto;
+/* 互動區域 (題目 + 輸入) */
+#interaction-area {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 95%;
+    max-width: 600px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-#storyText,
-#questionText,
-#feedbackText {
-  font-size: 0.7rem;
-  margin: 4px 0;
-  text-shadow: 1px 1px 2px #000;
-  pointer-events: auto;
+/* 根據模式調整位置 */
+.landscape-mode #interaction-area {
+    bottom: 20px;
+    right: 20px;
+    left: auto;
+    transform: none;
+    width: 40%;
 }
 
-/* 答案輸入區 */
-#answerArea {
-  display: flex;
-  gap: 4px;
-  margin-top: 6px;
-  pointer-events: auto;
+.landscape-mode #calculator {
+    left: 20px !important;
+    bottom: 20px !important;
+    width: 50% !important;
 }
 
-#answerInput {
-  flex: 1;
-  padding: 6px 8px;
-  font-size: 0.7rem;
-  border-radius: 6px;
-  border: none;
+#question-box {
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #fff;
+    border-radius: 10px;
+    padding: 15px;
+    color: white;
+    font-size: 1rem;
+    line-height: 1.4;
+    min-height: 80px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
-#answerArea button {
-  padding: 6px 8px;
-  font-size: 0.6rem;
-  border-radius: 6px;
-  border: none;
-  background: #ffcc33;
-  color: #000;
-  cursor: pointer;
+.input-row {
+    display: flex;
+    gap: 5px;
 }
 
-/* Boss 題目 Plan A / Plan B 按鈕 */
-#bossChoices {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  pointer-events: auto;
+#answer-input {
+    flex: 1;
+    padding: 10px;
+    font-size: 1.1rem;
+    border: 2px solid #888;
+    border-radius: 5px;
 }
 
-#bossChoices button {
-  flex: 1;
-  padding: 10px;
-  font-size: 0.7rem;
-  border-radius: 8px;
-  border: none;
-  background: #ff8866;
-  color: #000;
-  cursor: pointer;
+#submit-btn {
+    background: #ff9800;
+    color: black;
+    border: none;
+    padding: 0 20px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border-radius: 5px;
+    box-shadow: 0 4px #e65100;
 }
 
-/* 計算機面板（覆蓋在右下角） */
+#submit-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 #e65100;
+}
+
+#toggle-calc-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+/* 3. 虛擬計算機 */
 #calculator {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: min(340px, 95vw);
-  background: rgba(10,10,10,0.95);
-  border: 2px solid #888;
-  border-radius: 10px;
-  padding: 6px;
-  z-index: 15;
-  pointer-events: auto;
+    position: absolute;
+    bottom: 10px; /* 手機版預設在底部覆蓋 */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 95%;
+    max-width: 400px;
+    background: #333;
+    border: 3px solid #fff;
+    border-radius: 10px;
+    z-index: 20;
+    padding: 10px;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
 }
 
-#calc-display {
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 4px;
-  margin-bottom: 4px;
-  background: #111;
-  min-height: 40px;
-  font-size: 0.6rem;
-  word-wrap: break-word;
+#calc-screen {
+    background: #9ca08c; /* 經典 LCD 顏色 */
+    color: #000;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    text-align: right;
+    font-size: 1.5rem;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    min-height: 45px;
+    overflow-x: auto;
 }
 
-#calc-expression {
-  opacity: 0.8;
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
 }
 
-#calc-result {
-  margin-top: 2px;
-  font-size: 0.7rem;
-  text-align: right;
+.calc-btn {
+    padding: 10px 0;
+    font-size: 1rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: #e0e0e0;
+    color: #000;
+    touch-action: manipulation;
 }
 
-#calc-buttons {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+.calc-btn.op { background: #555; color: white; }
+.calc-btn.clear { background: #d32f2f; color: white; }
+.calc-btn.action { background: #1976D2; color: white; }
+.calc-btn.equals { background: #388E3C; color: white; }
+
+#use-ans-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    background: #009688;
+    color: white;
+    border: none;
+    border-radius: 4px;
 }
 
-#calc-buttons button {
-  padding: 6px 0;
-  font-size: 0.6rem;
-  border-radius: 6px;
-  border: none;
-  background: #333;
-  color: #fff;
-  cursor: pointer;
-}
-
-#calc-buttons button.wide {
-  grid-column: span 2;
-}
-
-#calc-buttons button:active {
-  background: #555;
-}
-
-/* 受傷時紅色閃爍遮罩 */
-#redFlash {
-  position: absolute;
-  inset: 0;
-  background: rgba(255,0,0,0.4);
-  z-index: 25;
-  pointer-events: none;
-}
-
-/* Shake 動畫：用 translateX 來晃動整個遊戲容器 */
+/* 4. 特效與反饋 */
 @keyframes shake {
-  10%, 90% { transform: translate3d(-2px, 0, 0); }
-  20%, 80% { transform: translate3d(4px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-  40%, 60% { transform: translate3d(8px, 0, 0); }
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
 
-/* 套在 #game-container 上，短時間抖動一次 */
-.shake {
-  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+.shake-effect {
+    animation: shake 0.5s;
 }
 
-/* 連擊 Fever 模式：邊框發光 */
-.fever-border {
-  box-shadow: 0 0 0 4px gold inset, 0 0 18px 6px gold;
+#feedback-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
-/* 讓不同模式稍微有感覺：直向補上一點上邊距避免 HUD 壓在返回鍵上 */
-#game-container.portrait #hud {
-  padding-top: 50px;
+.damage-flash {
+    background-color: rgba(255, 0, 0, 0.4);
+    opacity: 1 !important;
 }
 
-#game-container.landscape #hud {
-  padding-top: 30px;
+.combo-active {
+    border: 5px solid #FFD700; /* 黃金邊框 */
+}
+
+#combo-msg {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #FFD700;
+    font-size: 3rem;
+    font-weight: 900;
+    text-shadow: 0 0 10px red;
+    z-index: 30;
+    animation: popIn 0.3s ease-out;
+}
+
+@keyframes popIn {
+    0% { transform: translateX(-50%) scale(0); }
+    100% { transform: translateX(-50%) scale(1); }
 }
