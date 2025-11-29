@@ -3,51 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>利息勇者：惡龍討伐戰</title>
+  <title>利息迷宮：第一人稱數學冒險</title>
   <link rel="stylesheet" href="style.css">
-  <!-- 載入 p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
-  <!-- 版面選擇畫面 -->
+  <!-- 版面選擇 (Menu) -->
   <div id="layout-select" class="center-panel">
-    <h1>⚔️ 利息勇者 ⚔️</h1>
-    <p class="subtitle">運用數學魔法擊敗利息惡龍！</p>
+    <h1>🏰 利息迷宮 3D 🏰</h1>
+    <p class="subtitle">深入地下城，用利息公式擊倒守衛！</p>
 
     <button class="layout-btn" onclick="startPortraitLayout()">
-      📱 直向模式（手機）
+      📱 直向冒險 (手機)
     </button>
 
     <button class="layout-btn" onclick="startLandscapeLayout()">
-      💻 橫向模式（平板／電腦）
+      💻 橫向冒險 (平板/電腦)
     </button>
 
     <div class="hint">
-      <p><strong>關卡說明：</strong></p>
-      <ul style="list-style: none; padding: 0; font-size: 0.85rem; text-align: left; display: inline-block;">
-        <li>Lv 1: 史萊姆（簡單利息）</li>
-        <li>Lv 2: 雙頭狼（每年複利）</li>
-        <li>Lv 3: 奇美拉（半年/季/月/日複利）</li>
-        <li>Lv 4: 惡龍王（逆向求本金/利率/年期）</li>
+      <p><strong>前進規則：</strong></p>
+      <ul style="list-style: none; padding: 0; font-size: 0.9rem;">
+        <li>擊敗眼前怪獸才能前進。</li>
+        <li>Lv1: 簡單利息 (史萊姆)</li>
+        <li>Lv2: 每年複利 (骷髏兵)</li>
+        <li>Lv3: 進階複利 (石像鬼)</li>
+        <li>Lv4: 逆向工程 (惡龍)</li>
       </ul>
-      <p style="margin-top:8px; color: #fbbf24;">答對攻擊，答錯受傷！</p>
     </div>
   </div>
 
-  <!-- 返回按鈕 -->
-  <button id="backButton" onclick="goBackToMenu()">
-    ⚔️ 逃跑 (返回)
-  </button>
+  <!-- 遊戲中 UI 覆蓋層 -->
+  <button id="backButton" onclick="goBackToMenu()">🏃 逃離迷宮</button>
 
-  <!-- 答案輸入區 -->
+  <!-- 答案區 -->
   <div id="answer-panel">
-    <span class="answer-label">詠唱咒語（答案）：</span>
-    <input id="answerInput" type="text" inputmode="decimal" autocomplete="off" placeholder="輸入整數">
-    <button id="submitAnswerBtn" onclick="submitTypedAnswer()">🔥 攻擊！</button>
-    <button id="toggleCalcBtn" onclick="toggleCalculator()">🧮 魔法書</button>
+    <input id="answerInput" type="text" inputmode="decimal" autocomplete="off" placeholder="輸入答案...">
+    <button id="submitAnswerBtn" onclick="submitTypedAnswer()">⚔️ 攻擊</button>
+    <button id="toggleCalcBtn" onclick="toggleCalculator()">🧮 計算機</button>
   </div>
 
-  <!-- 虛擬計算機 -->
+  <!-- 計算機 -->
   <div id="calculator-panel">
     <div id="calc-header">
       <span>魔法計算機</span>
@@ -82,12 +78,12 @@
       <div class="calc-row">
         <button onclick="calcAppend('0')">0</button>
         <button onclick="calcAppend('.')">.</button>
-        <button onclick="calcAppend('^')" title="次方 (例如 1.05^3)">xʸ</button>
+        <button onclick="calcAppend('^')" title="次方 (x的y次方)">xʸ</button>
         <button onclick="calcAppend('+')">＋</button>
       </div>
       <div class="calc-row">
-        <!-- 新增 log 按鈕，方便 Level 4 高手使用，雖然 S3 未必教 -->
-        <button onclick="calcAppend('log(')" style="font-size: 0.8rem;">log</button>
+        <!-- 新增 N次根號 按鈕 -->
+        <button onclick="calcAppend('^(1/')" title="N次根號 (輸入後接著打數字再打右括號)">ⁿ√x</button>
         <button class="calc-equal" onclick="calcEvaluate()">＝</button>
         <button class="calc-fill" onclick="calcFillAnswer()">填入</button>
       </div>
