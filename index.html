@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>利息迷宮：終極試煉</title>
+  <title>利息迷宮 3D</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
-  <!-- 版面選擇 -->
+  <!-- 版面選擇 (Menu) -->
   <div id="layout-select" class="center-panel">
     <h1>🏰 利息迷宮 3D 🏰</h1>
-    <p class="subtitle">數學勇者的地下城冒險</p>
+    <p class="subtitle">擊敗守衛，深入地下城！</p>
 
     <button class="layout-btn" onclick="startPortraitLayout()">
       📱 直向冒險 (手機)
@@ -22,19 +22,18 @@
     </button>
 
     <div class="hint">
-      <p><strong>關卡資訊：</strong></p>
       <ul class="level-list">
-        <li>Lv1: 史萊姆 (簡單利息)</li>
-        <li>Lv2: 骷髏兵 (每年複利)</li>
-        <li>Lv3: 石像鬼 (分期複利)</li>
-        <li>Lv4: 惡龍 (求 P / r / t)</li>
-        <li>Lv5: 魔王 (非年複利求 P/r/t)</li>
+        <li>Lv1: 簡單利息 (史萊姆)</li>
+        <li>Lv2: 每年複利 (骷髏兵)</li>
+        <li>Lv3: 分期複利 (石像鬼)</li>
+        <li>Lv4: 逆向工程 (惡龍)</li>
+        <li>Lv5: 複雜逆算 (魔王)</li>
       </ul>
     </div>
   </div>
 
-  <!-- 逃跑按鈕 -->
-  <button id="backButton" onclick="goBackToMenu()">🏃 逃離</button>
+  <!-- 遊戲中 UI -->
+  <button id="backButton" onclick="goBackToMenu()">🏃 逃跑</button>
 
   <!-- 答案輸入區 -->
   <div id="answer-panel">
@@ -43,30 +42,27 @@
     <button id="toggleCalcBtn" onclick="toggleCalculator()">🧮 計算機</button>
   </div>
 
-  <!-- 升級版計算機 -->
+  <!-- 計算機 (移除 log) -->
   <div id="calculator-panel">
     <div id="calc-header">
-      <span>CASIO-Style Calculator</span>
+      <span>RPG Calculator</span>
       <button id="closeCalcBtn" onclick="toggleCalculator()">✕</button>
     </div>
     <div id="calc-display">0</div>
     <div id="calc-buttons">
-      <!-- 第一排：功能鍵 -->
       <div class="calc-row">
         <button onclick="calcClear()" class="btn-red">AC</button>
         <button onclick="calcBackspace()" class="btn-red">DEL</button>
         <button onclick="calcAppend('(')">(</button>
         <button onclick="calcAppend(')')">)</button>
       </div>
-      <!-- 第二排：進階運算 -->
       <div class="calc-row">
         <button onclick="calcAppend('^')">xʸ</button>
-        <!-- Casio 風格 Root: 輸入 3 ˣ√ 8 -->
         <button onclick="calcAppend('ˣ√')">ˣ√</button> 
-        <button onclick="calcAppend('log(')">log</button>
+        <!-- 空格佔位，保持排版整齊 -->
+        <button style="visibility:hidden;">_</button>
         <button onclick="calcAppend('÷')">÷</button>
       </div>
-      <!-- 數字區 -->
       <div class="calc-row">
         <button onclick="calcAppend('7')">7</button>
         <button onclick="calcAppend('8')">8</button>
@@ -91,9 +87,8 @@
         <button onclick="calcAppendAns()" class="btn-blue">Ans</button>
         <button onclick="calcEvaluate()" class="btn-green calc-equal">EXE</button>
       </div>
-      <!-- 填入按鈕獨立一行 -->
       <div class="calc-row">
-         <button class="calc-fill" onclick="calcFillAnswer()">將結果填入答案欄</button>
+         <button class="calc-fill" onclick="calcFillAnswer()">填入答案</button>
       </div>
     </div>
   </div>
