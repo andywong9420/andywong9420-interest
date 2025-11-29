@@ -2,96 +2,87 @@
 <html lang="zh-HK">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Warrior: Interest Quest</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>利息戰士 Interest Warrior</title>
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Visual Effects Overlays -->
-    <div id="damage-overlay"></div>
-    <div id="combo-overlay">COMBO x<span id="combo-count">0</span>!</div>
+<div id="damage-overlay"></div>
+<div id="combo-overlay">COMBO x<span id="combo-count">0</span>!</div>
 
-    <!-- Layout Selection Menu -->
-    <div id="menu">
-        <h1 style="color:#f1c40f; text-shadow: 2px 2px #c0392b;">利息戰士 Interest Warrior</h1>
-        <p>選擇你的顯示模式 / Choose Layout</p>
-        <div class="menu-buttons">
-            <button id="btn-portrait">📱 直向 (Portrait)</button>
-            <button id="btn-landscape">💻 橫向 (Landscape)</button>
-        </div>
-        <button id="btn-continue" class="hidden" style="margin-top:20px; background:#2ecc71; border: 2px solid white;">🔄 繼續遊戲 Continue</button>
+<!-- Menu -->
+<div id="menu">
+    <h1>利息戰士 Interest Warrior</h1>
+    <p>選擇你的顯示模式 / Choose Layout</p>
+    <div class="menu-buttons">
+        <button id="btn-portrait">📱 直向 (Portrait)</button>
+        <button id="btn-landscape">💻 橫向 (Landscape)</button>
+    </div>
+    <button id="btn-continue" class="hidden extra-btn">🔄 繼續遊戲 Continue</button>
+</div>
+
+<!-- Game -->
+<div id="game-container" class="hidden">
+
+    <!-- Left: Canvas -->
+    <div id="canvas-wrapper">
+        <canvas id="gameCanvas"></canvas>
+        <!-- IMPORTANT: small back button inside wrapper -->
+        <button id="backBtn">🔙</button>
     </div>
 
-    <!-- Main Game Container -->
-    <div id="game-container" class="hidden">
-        
-        <!-- Canvas Layer with UI Overlay Wrapper -->
-        <div id="canvas-wrapper">
-            <div id="canvas-ui-overlay">
-                <canvas id="gameCanvas"></canvas>
-                <!-- Back Button Moved Inside the Relative Wrapper -->
-                <button id="backBtn">🔙 Menu</button>
-            </div>
+    <!-- Right / Bottom: UI -->
+    <div id="ui-layer">
+        <div id="status-bar">
+            <span>LVL <span id="level-display">1</span></span>
+            <span>HP <span id="hp-display">❤️❤️❤️❤️❤️</span></span>
         </div>
 
-        <!-- UI Layer (HUD, Question, Calc) -->
-        <div id="ui-layer">
-            <div id="status-bar">
-                <span>LVL <span id="level-display">1</span></span>
-                <span>HP <span id="hp-display">❤️❤️❤️❤️❤️</span></span>
-            </div>
+        <div id="question-container">
+            <div id="question-text">準備開始... / Ready...</div>
+        </div>
 
-            <div id="question-container">
-                <div id="question-text">準備開始... / Ready...</div>
-            </div>
+        <div id="input-area">
+            <input type="text" id="answer-input" placeholder="按計算機輸入 / Use Calc" readonly>
+            <button id="submit-btn">⚔️ 攻擊</button>
+            <button id="calc-toggle-btn">🧮 Calc</button>
+        </div>
 
-            <!-- Read-only Input -->
-            <div id="input-area">
-                <input type="text" id="answer-input" placeholder="按計算機輸入 / Use Calc" readonly>
-                <button id="submit-btn">⚔️ 攻擊 Attack!</button>
-                <button id="calc-toggle-btn">🧮 Calc</button>
-            </div>
+        <!-- Calculator -->
+        <div id="calculator">
+            <div class="calc-screen" id="calc-screen">0</div>
+            <div class="calc-keys">
+                <button class="calc-btn op" data-val="AC">AC</button>
+                <button class="calc-btn op" data-val="DEL">DEL</button>
+                <button class="calc-btn op" data-val="(">(</button>
+                <button class="calc-btn op" data-val=")">)</button>
 
-            <!-- Virtual Calculator -->
-            <div id="calculator" class="">
-                <div class="calc-screen" id="calc-screen">0</div>
-                <div class="calc-keys">
-                    <button class="calc-btn op" data-val="AC">AC</button>
-                    <button class="calc-btn op" data-val="DEL">DEL</button>
-                    <button class="calc-btn op" data-val="(">(</button>
-                    <button class="calc-btn op" data-val=")">)</button>
-                    
-                    <button class="calc-btn" data-val="7">7</button>
-                    <button class="calc-btn" data-val="8">8</button>
-                    <button class="calc-btn" data-val="9">9</button>
-                    <button class="calc-btn op" data-val="/">÷</button>
-                    
-                    <button class="calc-btn" data-val="4">4</button>
-                    <button class="calc-btn" data-val="5">5</button>
-                    <button class="calc-btn" data-val="6">6</button>
-                    <button class="calc-btn op" data-val="*">×</button>
-                    
-                    <button class="calc-btn" data-val="1">1</button>
-                    <button class="calc-btn" data-val="2">2</button>
-                    <button class="calc-btn" data-val="3">3</button>
-                    <button class="calc-btn op" data-val="-">-</button>
-                    
-                    <button class="calc-btn" data-val="0">0</button>
-                    <button class="calc-btn" data-val=".">.</button>
-                    <button class="calc-btn op" data-val="^">x^y</button>
-                    <button class="calc-btn op" data-val="+">+</button>
-                    
-                    <!-- Special Root Button -->
-                    <button class="calc-btn action" data-val="ANS">Ans</button>
-                    <button class="calc-btn op" data-val="ROOT" style="font-size: 1rem;">x√y</button>
-                    <button class="calc-btn enter" data-val="INSERT" style="grid-column: span 2;">📥 填入 Insert</button>
-                </div>
+                <button class="calc-btn" data-val="7">7</button>
+                <button class="calc-btn" data-val="8">8</button>
+                <button class="calc-btn" data-val="9">9</button>
+                <button class="calc-btn op" data-val="/">÷</button>
+
+                <button class="calc-btn" data-val="4">4</button>
+                <button class="calc-btn" data-val="5">5</button>
+                <button class="calc-btn" data-val="6">6</button>
+                <button class="calc-btn op" data-val="*">×</button>
+
+                <button class="calc-btn" data-val="1">1</button>
+                <button class="calc-btn" data-val="2">2</button>
+                <button class="calc-btn" data-val="3">3</button>
+                <button class="calc-btn op" data-val="-">-</button>
+
+                <button class="calc-btn" data-val="0">0</button>
+                <button class="calc-btn" data-val=".">.</button>
+                <button class="calc-btn op" data-val="^">x^y</button>
+                <button class="calc-btn op" data-val="+">+</button>
+
+                <button class="calc-btn action" data-val="ANS">Ans</button>
+                <button class="calc-btn op" data-val="ROOT" style="font-size: 1rem;">x√y</button>
+                <button class="calc-btn enter" data-val="INSERT" style="grid-column: span 2;">📥 填入 Insert</button>
             </div>
         </div>
-    </div>
-
-    <script src="main.js"></script>
-</body>
-</html>
+    </
