@@ -132,12 +132,6 @@ canvas {
     width: 40%;
 }
 
-.landscape-mode #calculator {
-    left: 20px !important;
-    bottom: 20px !important;
-    width: 50% !important;
-}
-
 #question-box {
     background: rgba(0, 0, 0, 0.85);
     border: 2px solid #fff;
@@ -188,117 +182,49 @@ canvas {
     font-size: 0.9rem;
 }
 
-/* 3. 虛擬計算機 */
+/* 3. 虛擬計算機 (可移動、可縮放版) */
 #calculator {
     position: absolute;
-    bottom: 10px; /* 手機版預設在底部覆蓋 */
+    /* 初始位置：改為螢幕中間，避免被切掉 */
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    width: 95%;
-    max-width: 400px;
+    transform: translate(-50%, -50%); 
+    
+    /* 啟用縮放功能 */
+    resize: both;
+    overflow: hidden; /* 必須設定 hidden 或 auto 才能縮放 */
+    min-width: 280px;
+    min-height: 350px;
+    width: 320px;     /* 預設寬度 */
+    
     background: #333;
     border: 3px solid #fff;
     border-radius: 10px;
-    z-index: 20;
+    z-index: 1000; /* 確保在最上層 */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* 拖曳手柄樣式 */
+#calc-header {
     padding: 10px;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
+    cursor: move; /* 滑鼠游標變成移動圖示 */
+    background: #2196F3;
+    color: #fff;
+    text-align: center;
+    font-weight: bold;
+    user-select: none;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
 }
 
-#calc-screen {
-    background: #9ca08c; /* 經典 LCD 顏色 */
-    color: #000;
+.calc-body {
     padding: 10px;
-    font-family: 'Courier New', monospace;
-    text-align: right;
-    font-size: 1.5rem;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    min-height: 45px;
-    overflow-x: auto;
+    flex: 1; /* 填滿剩餘空間 */
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
 }
 
-.calc-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 5px;
-}
-
-.calc-btn {
-    padding: 10px 0;
-    font-size: 1rem;
-    border: 1px solid #555;
-    border-radius: 4px;
-    background: #e0e0e0;
-    color: #000;
-    touch-action: manipulation;
-}
-
-.calc-btn.op { background: #555; color: white; }
-.calc-btn.clear { background: #d32f2f; color: white; }
-.calc-btn.action { background: #1976D2; color: white; }
-.calc-btn.equals { background: #388E3C; color: white; }
-
-#use-ans-btn {
-    width: 100%;
-    margin-top: 10px;
-    padding: 8px;
-    background: #009688;
-    color: white;
-    border: none;
-    border-radius: 4px;
-}
-
-/* 4. 特效與反饋 */
-@keyframes shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    10% { transform: translate(-1px, -2px) rotate(-1deg); }
-    20% { transform: translate(-3px, 0px) rotate(1deg); }
-    30% { transform: translate(3px, 2px) rotate(0deg); }
-    40% { transform: translate(1px, -1px) rotate(1deg); }
-    50% { transform: translate(-1px, 2px) rotate(-1deg); }
-    60% { transform: translate(-3px, 1px) rotate(0deg); }
-    70% { transform: translate(3px, 1px) rotate(-1deg); }
-    80% { transform: translate(-1px, -1px) rotate(1deg); }
-    90% { transform: translate(1px, 2px) rotate(0deg); }
-    100% { transform: translate(1px, -2px) rotate(-1deg); }
-}
-
-.shake-effect {
-    animation: shake 0.5s;
-}
-
-#feedback-overlay {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none;
-    z-index: 6;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.damage-flash {
-    background-color: rgba(255, 0, 0, 0.4);
-    opacity: 1 !important;
-}
-
-.combo-active {
-    border: 5px solid #FFD700; /* 黃金邊框 */
-}
-
-#combo-msg {
-    position: absolute;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #FFD700;
-    font-size: 3rem;
-    font-weight: 900;
-    text-shadow: 0 0 10px red;
-    z-index: 30;
-    animation: popIn 0.3s ease-out;
-}
-
-@keyframes popIn {
-    0% { transform: translateX(-50%) scale(0); }
-    100% { transform: translateX(-50%) scale(1); }
-}
+/* 移除 landscape 對 calculator 的強制定位，讓 JS 控制位置
