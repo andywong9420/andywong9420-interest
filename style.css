@@ -1,24 +1,16 @@
 /* style.css */
-/* 
-   這個檔案負責：
-   - 版面選擇畫面的置中與按鈕樣式
-   - 「返回」按鈕樣式與位置
-   - 手機／平板上的答案輸入區與虛擬計算機排版
-   - 整體背景與字體
-*/
-
-/* 讓整個頁面充滿視窗，移除預設邊距，設定背景色 */
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
-  background: radial-gradient(circle at top, #1f2937 0%, #020617 60%, #000000 100%);
-  color: #f9fafb;
-  overflow: hidden; /* 避免畫布時常出現捲軸 */
+  font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  background: #0f172a; /* 深藍黑背景 */
+  color: #f1f5f9;
+  overflow: hidden;
+  touch-action: none; /* 全局禁止瀏覽器預設觸控行為 */
 }
 
-/* 版面選擇畫面容器：置中顯示、手機也容易點擊 */
+/* 版面選擇 (Menu) */
 #layout-select {
   position: absolute;
   inset: 0;
@@ -26,254 +18,199 @@ html, body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 16px;
-  box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.75); /* 半透明背景，之後畫布在後面時也可讀 */
+  background: rgba(15, 23, 42, 0.95);
+  z-index: 50;
   text-align: center;
-  z-index: 20; /* 顯示在畫布和其他 UI 上方 */
+  padding: 20px;
 }
 
 #layout-select h1 {
-  font-size: 1.9rem;
-  margin-bottom: 8px;
-}
-
-#layout-select .subtitle {
-  font-size: 1rem;
-  opacity: 0.9;
-  margin-bottom: 20px;
+  font-size: 2.2rem;
+  color: #fbbf24;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
 }
 
 .layout-btn {
-  width: 80%;
-  max-width: 360px;
-  padding: 14px 18px;
-  margin: 8px 0;
-  font-size: 1.05rem;
-  border-radius: 999px;
-  border: none;
+  width: 280px;
+  padding: 16px;
+  margin: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: 12px;
+  border: 2px solid #fbbf24;
+  background: #1e293b;
+  color: #fbbf24;
   cursor: pointer;
-  color: #0f172a;
-  background: linear-gradient(135deg, #facc15, #f97316);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
-  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+  transition: all 0.2s;
 }
 
 .layout-btn:active {
-  transform: scale(0.97);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
-  filter: brightness(0.95);
-}
-
-.layout-btn:focus-visible {
-  outline: 2px solid #f97316;
-  outline-offset: 2px;
+  transform: scale(0.95);
+  background: #fbbf24;
+  color: #1e293b;
 }
 
 .hint {
-  font-size: 0.9rem;
-  opacity: 0.85;
-  margin-top: 18px;
-  line-height: 1.4;
+  margin-top: 20px;
+  color: #94a3b8;
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #334155;
 }
 
-/* 返回按鈕：遊戲進行中固定在畫面左上角，方便觸控 */
+/* 返回按鈕 */
 #backButton {
   position: fixed;
-  top: 10px;
-  left: 10px;
-  padding: 8px 14px;
-  font-size: 0.9rem;
-  border-radius: 999px;
+  top: 12px;
+  left: 12px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: #ef4444;
+  color: white;
   border: none;
+  font-weight: bold;
+  box-shadow: 0 4px 0 #991b1b;
+  z-index: 40;
+  display: none;
   cursor: pointer;
-  background: rgba(15, 23, 42, 0.85);
-  color: #f9fafb;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
-  z-index: 11; /* 在畫布和答案區上方，略低於選單 */
-  display: none; /* 初始在選單畫面隱藏，開始遊戲才顯示 */
 }
-
 #backButton:active {
-  transform: scale(0.96);
+  transform: translateY(4px);
+  box-shadow: none;
 }
 
-/* ===== 答案輸入區（畫面下方） ===== */
+/* 答案輸入區 */
 #answer-panel {
   position: fixed;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  display: none; /* 只有在遊戲進行時顯示 */
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #1e293b;
+  padding: 10px 0 20px 0; /* 底部留白給手機手勢區 */
+  display: none;
+  justify-content: center;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
-  z-index: 10;
-}
-
-.answer-label {
-  font-size: 0.72rem;
-  white-space: nowrap;
+  gap: 10px;
+  border-top: 2px solid #334155;
+  z-index: 40;
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
 }
 
 #answerInput {
-  min-width: 90px;
-  max-width: 120px;
-  padding: 4px 8px;
-  font-size: 0.86rem;
-  border-radius: 6px;
-  border: 1px solid #64748b;
-  background: #020617;
-  color: #e5e7eb;
-}
-
-#submitAnswerBtn,
-#toggleCalcBtn {
-  border: none;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  white-space: nowrap;
+  width: 100px;
+  padding: 10px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  border: 2px solid #475569;
+  background: #0f172a;
+  color: white;
+  text-align: center;
 }
 
 #submitAnswerBtn {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #022c22;
+  background: linear-gradient(to bottom, #ef4444, #b91c1c);
+  color: white;
+  font-weight: bold;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  box-shadow: 0 4px 0 #7f1d1d;
+  cursor: pointer;
+}
+#submitAnswerBtn:active {
+  transform: translateY(4px);
+  box-shadow: none;
 }
 
 #toggleCalcBtn {
-  background: #0f172a;
-  color: #e5e7eb;
-}
-
-/* 小尺寸手機上，答案區改為多行堆疊，避免太擠 */
-@media (max-width: 480px) {
-  #answer-panel {
-    flex-direction: column;
-    align-items: stretch;
-    border-radius: 12px;
-    padding: 8px 10px;
-  }
-
-  .answer-label {
-    font-size: 0.78rem;
-    text-align: center;
-  }
-
-  #answerInput {
-    width: 100%;
-    max-width: none;
-    box-sizing: border-box;
-  }
-
-  #submitAnswerBtn,
-  #toggleCalcBtn {
-    width: 100%;
-    font-size: 0.8rem;
-    padding: 6px 10px;
-  }
-
-  #backButton {
-    font-size: 0.8rem;
-    padding: 6px 10px;
-  }
-
-  #layout-select h1 {
-    font-size: 1.6rem;
-  }
-
-  .layout-btn {
-    font-size: 0.95rem;
-    padding: 12px 14px;
-  }
-
-  .hint {
-    font-size: 0.8rem;
-  }
-}
-
-/* ===== 虛擬計算機樣式 ===== */
-#calculator-panel {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(320px, 90vw);
-  background: #020617;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
-  border: 1px solid #1f2937;
-  display: none; /* 由 JS 控制顯示 */
-  flex-direction: column;
-  z-index: 30; /* 在所有元素上方 */
-}
-
-#calc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid #1f2937;
-  font-size: 0.9rem;
-}
-
-#closeCalcBtn {
+  background: #3b82f6;
+  color: white;
+  padding: 10px;
   border: none;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 0.8rem;
-  background: #111827;
-  color: #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 
+/* 計算機 */
+#calculator-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  background: #1e293b;
+  border: 2px solid #475569;
+  border-radius: 15px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  display: none;
+  z-index: 100;
+  overflow: hidden;
+}
+
+#calc-header {
+  background: #0f172a;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+}
+
 #calc-display {
-  padding: 10px 12px;
-  font-size: 1.2rem;
+  background: #000;
+  color: #22c55e; /* 復古綠色螢幕 */
+  font-family: monospace;
+  font-size: 1.5rem;
+  padding: 15px;
   text-align: right;
-  background: #020617;
-  border-bottom: 1px solid #1f2937;
-  min-height: 40px;
-  word-wrap: break-word;
+  border-bottom: 1px solid #334155;
+  min-height: 1.5em;
 }
 
 #calc-buttons {
-  padding: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .calc-row {
   display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 8px;
 }
 
 #calc-buttons button {
   flex: 1;
-  padding: 10px 0;
-  border-radius: 10px;
+  padding: 12px;
+  background: #334155;
+  color: white;
   border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
   cursor: pointer;
-  font-size: 0.95rem;
-  background: #0f172a;
-  color: #e5e7eb;
 }
 
 #calc-buttons button:active {
-  transform: scale(0.96);
+  background: #475569;
 }
 
 .calc-equal {
-  flex: 2;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #022c22;
+  flex: 1.5 !important;
+  background: #eab308 !important;
+  color: black !important;
 }
 
 .calc-fill {
-  flex: 2;
-  background: #1d4ed8;
-  color: #e5e7eb;
+  flex: 1.5 !important;
+  background: #22c55e !important;
+}
+
+@media (max-width: 480px) {
+  .answer-label { display: none; }
+  #answerInput { width: 80px; font-size: 1rem; }
+  #submitAnswerBtn { padding: 10px 15px; font-size: 0.9rem; }
 }
