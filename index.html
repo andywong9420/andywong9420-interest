@@ -4,19 +4,12 @@
   <meta charset="utf-8">
   <!-- 禁止縮放，優化手機體驗 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>利息迷宮 3D</title>
+  <title>利息迷宮 3D (Safe Mode)</title>
   <link rel="stylesheet" href="style.css">
   <!-- 引入 p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
-
-  <!-- 錯誤偵測：如果 JS 壞掉會跳出警告 -->
-  <script>
-    window.onerror = function(msg, url, line) {
-      alert("程式發生錯誤: " + msg + "\nLine: " + line);
-    };
-  </script>
 
   <!-- Canvas 容器 -->
   <div id="canvas-container"></div>
@@ -59,7 +52,7 @@
     </div>
   </div>
 
-  <!-- 3. 計算機 (Calculator) -->
+  <!-- 3. 計算機 (Calculator) - 使用安全字符版 -->
   <div id="calc-panel" class="hidden">
     <div class="calc-header">
       <span>RPG Calculator</span>
@@ -72,15 +65,16 @@
       <button class="calc-btn" onclick="GameApp.calcAppend('(')">(</button>
       <button class="calc-btn" onclick="GameApp.calcAppend(')')">)</button>
 
-      <button class="calc-btn" onclick="GameApp.calcAppend('^')">xʸ</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('ˣ√')">ˣ√</button> 
-      <button class="calc-btn" onclick="GameApp.calcAppend('÷')">÷</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('×')">×</button>
+      <button class="calc-btn" onclick="GameApp.calcAppend('^')">^</button>
+      <!-- Root 鍵：輸入格式為 "3 Root 8" 代表 8 開 3 次方根 -->
+      <button class="calc-btn" onclick="GameApp.calcAppend('Root')">Root</button> 
+      <button class="calc-btn" onclick="GameApp.calcAppend('/')">/</button>
+      <button class="calc-btn" onclick="GameApp.calcAppend('*')">*</button>
 
       <button class="calc-btn" onclick="GameApp.calcAppend('7')">7</button>
       <button class="calc-btn" onclick="GameApp.calcAppend('8')">8</button>
       <button class="calc-btn" onclick="GameApp.calcAppend('9')">9</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('-')">−</button>
+      <button class="calc-btn" onclick="GameApp.calcAppend('-')">-</button>
 
       <button class="calc-btn" onclick="GameApp.calcAppend('4')">4</button>
       <button class="calc-btn" onclick="GameApp.calcAppend('5')">5</button>
