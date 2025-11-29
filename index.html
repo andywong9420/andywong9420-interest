@@ -27,13 +27,16 @@
     <!-- Main Game Container -->
     <div id="game-container" class="hidden">
         
-        <!-- Canvas Layer -->
+        <!-- Canvas Layer with UI Overlay Wrapper -->
         <div id="canvas-wrapper">
-            <canvas id="gameCanvas"></canvas>
-            <button id="backBtn">🔙 Menu</button>
+            <div id="canvas-ui-overlay">
+                <canvas id="gameCanvas"></canvas>
+                <!-- Back Button Moved Inside the Relative Wrapper -->
+                <button id="backBtn">🔙 Menu</button>
+            </div>
         </div>
 
-        <!-- UI Layer -->
+        <!-- UI Layer (HUD, Question, Calc) -->
         <div id="ui-layer">
             <div id="status-bar">
                 <span>LVL <span id="level-display">1</span></span>
