@@ -50,48 +50,46 @@
             </div>
         </div>
 
-        <!-- 虛擬計算機 (仿 Casio 風格) -->
+        <!-- 虛擬計算機 (可拖曳、可縮放版) -->
         <div id="calculator" class="hidden">
-            <div id="calc-screen">0</div>
-            <div class="calc-grid">
-                <button class="calc-btn op" data-val="(">(</button>
-                <button class="calc-btn op" data-val=")">)</button>
-                <button class="calc-btn op" data-val="^">x^y</button>
-                <button class="calc-btn op" data-val="sqrt">y√x</button>
-                <button class="calc-btn clear" data-val="C">AC</button>
-                
-                <button class="calc-btn" data-val="7">7</button>
-                <button class="calc-btn" data-val="8">8</button>
-                <button class="calc-btn" data-val="9">9</button>
-                <button class="calc-btn op" data-val="/">÷</button>
-                <button class="calc-btn op" data-val="DEL">DEL</button>
+            <!-- 拖曳手柄 -->
+            <div id="calc-header">:::: 拖曳移動 ::::</div>
+            
+            <div class="calc-body">
+                <div id="calc-screen">0</div>
+                <div class="calc-grid">
+                    <button class="calc-btn op" data-val="(">(</button>
+                    <button class="calc-btn op" data-val=")">)</button>
+                    <button class="calc-btn op" data-val="^">x^y</button>
+                    <button class="calc-btn op" data-val="sqrt">y√x</button>
+                    <button class="calc-btn clear" data-val="C">AC</button>
+                    
+                    <button class="calc-btn" data-val="7">7</button>
+                    <button class="calc-btn" data-val="8">8</button>
+                    <button class="calc-btn" data-val="9">9</button>
+                    <button class="calc-btn op" data-val="/">÷</button>
+                    <button class="calc-btn op" data-val="DEL">DEL</button>
 
-                <button class="calc-btn" data-val="4">4</button>
-                <button class="calc-btn" data-val="5">5</button>
-                <button class="calc-btn" data-val="6">6</button>
-                <button class="calc-btn op" data-val="*">×</button>
-                <button class="calc-btn op" data-val="root">√</button>
+                    <button class="calc-btn" data-val="4">4</button>
+                    <button class="calc-btn" data-val="5">5</button>
+                    <button class="calc-btn" data-val="6">6</button>
+                    <button class="calc-btn op" data-val="*">×</button>
+                    <button class="calc-btn op" data-val="root">√</button>
 
-                <button class="calc-btn" data-val="1">1</button>
-                <button class="calc-btn" data-val="2">2</button>
-                <button class="calc-btn" data-val="3">3</button>
-                <button class="calc-btn op" data-val="-">-</button>
-                <button class="calc-btn action" id="calc-ans">Ans</button>
+                    <button class="calc-btn" data-val="1">1</button>
+                    <button class="calc-btn" data-val="2">2</button>
+                    <button class="calc-btn" data-val="3">3</button>
+                    <button class="calc-btn op" data-val="-">-</button>
+                    <button class="calc-btn action" id="calc-ans">Ans</button>
 
-                <button class="calc-btn" data-val="0">0</button>
-                <button class="calc-btn" data-val=".">.</button>
-                <button class="calc-btn op" data-val="%">%</button>
-                <button class="calc-btn op" data-val="+">+</button>
-                <button class="calc-btn equals" id="calc-equals">=</button>
+                    <button class="calc-btn" data-val="0">0</button>
+                    <button class="calc-btn" data-val=".">.</button>
+                    <button class="calc-btn op" data-val="%">%</button>
+                    <button class="calc-btn op" data-val="+">+</button>
+                    <button class="calc-btn equals" id="calc-equals">=</button>
+                </div>
+                <button id="use-ans-btn">將計算結果填入答案</button>
             </div>
-            <button id="use-ans-btn">將計算結果填入答案</button>
         </div>
 
         <!-- 受傷/Combo 特效層 -->
-        <div id="feedback-overlay"></div>
-        <div id="combo-msg" class="hidden">COMBO x3! FEVER!</div>
-    </div>
-
-    <script src="main.js"></script>
-</body>
-</html>
