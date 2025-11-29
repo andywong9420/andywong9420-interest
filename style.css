@@ -6,21 +6,20 @@
     --gold: #f1c40f;
 }
 
-/* Global Reset & Touch Handling */
+/* Global Reset */
 body, html {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
     font-family: 'DotGothic16', sans-serif;
     background-color: var(--bg-color);
     overflow: hidden;
-    touch-action: none; /* Prevents double-tap zoom on iPad */
-    -webkit-user-select: none;
-    user-select: none;
+    touch-action: none; /* No zoom */
+    -webkit-user-select: none; user-select: none;
 }
 
 button, input, .calc-btn {
     font-family: 'DotGothic16', sans-serif;
-    touch-action: manipulation; /* Improved click response */
+    touch-action: manipulation;
 }
 
 .hidden { display: none !important; }
@@ -71,12 +70,11 @@ button, input, .calc-btn {
 .menu-buttons button, #btn-continue {
     padding: 15px 30px; font-size: 1.2rem;
     background: var(--btn-color); border: 4px solid #2980b9;
-    border-radius: 0; 
-    color: white; cursor: pointer; box-shadow: 4px 4px 0px #000;
+    border-radius: 0; color: white; cursor: pointer; box-shadow: 4px 4px 0px #000;
 }
 .menu-buttons button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #000; }
 
-/* --- Game Layout Container --- */
+/* --- Game Layout --- */
 #game-container { width: 100%; height: 100%; display: flex; position: relative; }
 
 /* Portrait Mode */
@@ -84,17 +82,26 @@ button, input, .calc-btn {
 .portrait-mode #canvas-wrapper { width: 100%; height: 40%; flex-shrink: 0; }
 .portrait-mode #ui-layer { width: 100%; height: 60%; display: flex; flex-direction: column; }
 
-/* Landscape Mode (iPad fix) */
+/* Landscape Mode */
 .landscape-mode { flex-direction: row; }
 .landscape-mode #canvas-wrapper { width: 55%; height: 100%; }
 .landscape-mode #ui-layer { width: 45%; height: 100%; border-left: 5px solid #333; display: flex; flex-direction: column;}
 
-/* --- Canvas Area --- */
+/* --- Canvas & Back Button Wrapper --- */
 #canvas-wrapper { 
     position: relative; 
     background: #000; 
     overflow: hidden;
-    /* Flex centering ensures canvas stays in middle */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Key fix: This div matches the canvas aspect ratio */
+#canvas-ui-overlay {
+    position: relative;
+    width: 100%;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -102,17 +109,26 @@ button, input, .calc-btn {
 
 canvas { 
     display: block; 
-    /* Important: Force canvas to fit container but maintain aspect ratio */
     width: 100%;
     height: 100%;
-    object-fit: contain; 
+    object-fit: contain; /* Keeps 800x600 ratio */
+    max-width: 100%;
+    max-height: 100%;
 }
 
 #backBtn {
-    position: absolute; top: 10px; left: 10px;
-    padding: 5px 10px; background: #fff; border: 2px solid #000;
-    font-family: 'DotGothic16'; cursor: pointer; font-weight: bold;
-    z-index: 50; /* Ensure it's on top */
+    position: absolute; 
+    top: 10px; 
+    left: 10px;
+    padding: 8px 12px; 
+    background: #fff; 
+    border: 2px solid #000;
+    font-family: 'DotGothic16'; 
+    cursor: pointer; 
+    font-weight: bold;
+    z-index: 50;
+    font-size: 0.9rem;
+    opacity: 0.8; /* Make slightly transparent so it blocks less */
 }
 
 /* --- UI Layer --- */
