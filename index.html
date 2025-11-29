@@ -1,99 +1,86 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-HK">
 <head>
-  <meta charset="utf-8">
-  <!-- 禁止縮放，優化手機體驗 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>利息迷宮 3D (Safe Mode)</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- 引入 p5.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Math Warrior: Interest Quest</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Canvas 容器 -->
-  <div id="canvas-container"></div>
-
-  <!-- 1. 主選單 (Menu) -->
-  <div id="menu-screen" class="fullscreen-ui">
-    <h1>🏰 利息迷宮 3D 🏰</h1>
-    <p class="subtitle">擊敗守衛，深入地下城！</p>
-
-    <button class="menu-btn" onclick="GameApp.startGame()">⚔️ 開始冒險 (Start)</button>
-
-    <div class="info-box">
-      <strong>關卡資訊：</strong>
-      <ul>
-        <li>Lv1: 簡單利息 (史萊姆)</li>
-        <li>Lv2: 每年複利 (骷髏兵)</li>
-        <li>Lv3: 分期複利 (石像鬼)</li>
-        <li>Lv4: 逆向工程 (惡龍)</li>
-        <li>Lv5: 魔王級 (非年逆算)</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- 2. 遊戲介面 (HUD) -->
-  <div id="game-ui" class="hidden">
-    <!-- 頂部資訊 -->
-    <div id="top-hud">
-      <button id="back-btn" onclick="GameApp.backToMenu()">🏃 逃跑</button>
-      <div class="status-group">
-        <div id="hp-display" style="color:#ef4444">❤️ 5</div>
-        <div id="lvl-display" style="color:#fbbf24">Lv 1</div>
-      </div>
+    <!-- Layout Selection Menu -->
+    <div id="menu">
+        <h1>利息戰士 Interest Warrior</h1>
+        <p>選擇你的顯示模式 / Choose Layout</p>
+        <div class="menu-buttons">
+            <button id="btn-portrait">直向 (手機 / Mobile)</button>
+            <button id="btn-landscape">橫向 (平板 / iPad)</button>
+        </div>
     </div>
 
-    <!-- 底部控制區 -->
-    <div id="bottom-panel">
-      <input id="ans-input" type="number" inputmode="decimal" placeholder="輸入答案">
-      <button id="attack-btn" onclick="GameApp.submitAnswer()">⚔️ 攻擊</button>
-      <button id="calc-toggle-btn" onclick="GameApp.toggleCalc()">🧮</button>
+    <!-- Main Game Container (Hidden initially) -->
+    <div id="game-container" class="hidden">
+        
+        <!-- Canvas Layer: Renders the 3D scene, Monster, and Animations -->
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            <button id="backBtn">返回 Back</button>
+        </div>
+
+        <!-- UI Layer: Question, Input, and Calculator -->
+        <div id="ui-layer">
+            <div id="status-bar">
+                <span>Level: <span id="level-display">1</span></span>
+                <span>HP: <span id="hp-display">❤️❤️❤️❤️❤️</span></span>
+            </div>
+
+            <div id="question-box">
+                <div id="question-text">準備開始... / Ready...</div>
+            </div>
+
+            <div id="input-area">
+                <input type="number" id="answer-input" placeholder="輸入答案 / Answer" step="0.01">
+                <button id="submit-btn">攻擊 Attack!</button>
+                <button id="calc-toggle-btn">計算機 Calculator</button>
+            </div>
+
+            <!-- Virtual Calculator Overlay -->
+            <div id="calculator" class="hidden">
+                <div class="calc-screen" id="calc-screen">0</div>
+                <div class="calc-keys">
+                    <button class="calc-btn op" data-val="AC">AC</button>
+                    <button class="calc-btn op" data-val="DEL">DEL</button>
+                    <button class="calc-btn op" data-val="(">(</button>
+                    <button class="calc-btn op" data-val=")">)</button>
+                    
+                    <button class="calc-btn" data-val="7">7</button>
+                    <button class="calc-btn" data-val="8">8</button>
+                    <button class="calc-btn" data-val="9">9</button>
+                    <button class="calc-btn op" data-val="/">÷</button>
+                    
+                    <button class="calc-btn" data-val="4">4</button>
+                    <button class="calc-btn" data-val="5">5</button>
+                    <button class="calc-btn" data-val="6">6</button>
+                    <button class="calc-btn op" data-val="*">×</button>
+                    
+                    <button class="calc-btn" data-val="1">1</button>
+                    <button class="calc-btn" data-val="2">2</button>
+                    <button class="calc-btn" data-val="3">3</button>
+                    <button class="calc-btn op" data-val="-">-</button>
+                    
+                    <button class="calc-btn" data-val="0">0</button>
+                    <button class="calc-btn" data-val=".">.</button>
+                    <button class="calc-btn op" data-val="^">x^y</button>
+                    <button class="calc-btn op" data-val="+">+</button>
+                    
+                    <button class="calc-btn action" data-val="ANS">Ans</button>
+                    <button class="calc-btn op" data-val="SQRT">x√</button>
+                    <button class="calc-btn enter" data-val="ENTER" style="grid-column: span 2;">輸入 Insert</button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- 3. 計算機 (Calculator) - 使用安全字符版 -->
-  <div id="calc-panel" class="hidden">
-    <div class="calc-header">
-      <span>RPG Calculator</span>
-      <button onclick="GameApp.toggleCalc()" class="close-btn">✕</button>
-    </div>
-    <div id="calc-screen">0</div>
-    <div class="calc-grid">
-      <button class="calc-btn bg-red" onclick="GameApp.calcClear()">AC</button>
-      <button class="calc-btn bg-red" onclick="GameApp.calcDel()">DEL</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('(')">(</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend(')')">)</button>
-
-      <button class="calc-btn" onclick="GameApp.calcAppend('^')">^</button>
-      <!-- Root 鍵：輸入格式為 "3 Root 8" 代表 8 開 3 次方根 -->
-      <button class="calc-btn" onclick="GameApp.calcAppend('Root')">Root</button> 
-      <button class="calc-btn" onclick="GameApp.calcAppend('/')">/</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('*')">*</button>
-
-      <button class="calc-btn" onclick="GameApp.calcAppend('7')">7</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('8')">8</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('9')">9</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('-')">-</button>
-
-      <button class="calc-btn" onclick="GameApp.calcAppend('4')">4</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('5')">5</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('6')">6</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('+')">+</button>
-
-      <button class="calc-btn" onclick="GameApp.calcAppend('1')">1</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('2')">2</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('3')">3</button>
-      <button class="calc-btn bg-green" onclick="GameApp.calcEqual()">=</button>
-
-      <button class="calc-btn" onclick="GameApp.calcAppend('0')" style="grid-column: span 2">0</button>
-      <button class="calc-btn" onclick="GameApp.calcAppend('.')">.</button>
-      <button class="calc-btn bg-blue" onclick="GameApp.calcAns()">Ans</button>
-    </div>
-    <button class="fill-btn" onclick="GameApp.fillAns()">填入答案</button>
-  </div>
-
-  <!-- 引入主程式 -->
-  <script src="main.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
