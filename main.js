@@ -6,10 +6,11 @@ const state = {
     score: 0,
     combo: 0,
     questionsInLevel: 0,
-    maxQuestions: 30,
+    maxQuestions: 5,          // 每關 5 題
     question: null,
     lastCalcAns: 0,
-    isFever: false
+    isFever: false,
+    usedQuestions: []         // 記錄本關已用過的題目，避免重複
 };
 
 // === Canvas 設定 ===
@@ -42,18 +43,15 @@ const HK_CONTEXTS = [
 
 function generateQuestion(level) {
     let P, r, t, n, A, I, ans, qText;
-    
-    // 注意：這裡改用 let 宣告並給初始空值
     let formulaStr = ""; 
     
     const context = randItem(HK_CONTEXTS);
     
-    // 難度參數
-    P = randInt(10, 100) * 100; // 1000 - 10000
-    r = randInt(2, 15); // 2% - 15%
-    t = randInt(1, 5); // 年份
+    P = randInt(10, 100) * 100; 
+    r = randInt(2, 15); 
+    t = randInt(1, 5); 
 
-    // Level 1: 單利息 (找 I 或 A)
+    // Level 1: 單利息
     if (level === 1) {
         I = (P * r * t) / 100;
         A = P + I;
@@ -117,7 +115,6 @@ function generateQuestion(level) {
                 ans = t;
             }
         } else {
-            // Find P in Compound
             A = P * Math.pow((1 + r/100), t);
             A = round2(A);
             qText = `${context}<br>複利息(每年一結)，年利率 ${r}%，存期 ${t} 年，本利和為 $${A}。<br>求本金 (Principal) (取整數)。`;
@@ -158,7 +155,7 @@ class Particle {
         this.x += this.vx;
         this.y += this.vy;
         this.life -= 0.03;
-        this.vy += 0.5; // 重力
+        this.vy += 0.5; 
     }
     draw(ctx) {
         ctx.globalAlpha = this.life;
@@ -169,19 +166,16 @@ class Particle {
 }
 
 // === 繪圖邏輯 ===
-// 天空顏色 [早晨, 下午, 晚上, 深夜, 虛空]
 const SKY_COLORS = ['#87CEEB', '#FFA500', '#191970', '#4B0082', '#220000'];
 
 let gridOffset = 0;
 let monsterScale = 1.0; 
 
 function drawGame() {
-    // 1. 背景 (Day/Night Cycle)
     const skyColor = SKY_COLORS[Math.min(state.level - 1, 4)];
     ctx.fillStyle = skyColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. 偽 3D 地板格線
     const horizon = canvas.height * 0.5;
     ctx.fillStyle = '#222'; 
     ctx.fillRect(0, horizon, canvas.width, canvas.height / 2);
@@ -205,7 +199,6 @@ function drawGame() {
     }
     ctx.stroke();
 
-    // 3. 怪物 (Emoji 繪製，更生動)
     monsterScale = 1 + Math.sin(Date.now() / 500) * 0.1;
     const mx = canvas.width / 2;
     const my = canvas.height / 2 + 30;
@@ -217,7 +210,6 @@ function drawGame() {
     const monsters = ['👾', '👹', '🤖', '🐲', '💀'];
     ctx.fillText(monsters[state.level - 1] || '👽', mx, my);
 
-    // 4. 粒子效果
     particles.forEach((p, index) => {
         p.update();
         p.draw(ctx);
@@ -241,6 +233,7 @@ function initGame(layoutMode) {
     state.combo = 0;
     state.questionsInLevel = 0;
     state.isFever = false;
+    state.usedQuestions = []; // 重置題目記錄
     updateUI();
 
     document.getElementById('menu').classList.add('hidden');
@@ -255,15 +248,32 @@ function initGame(layoutMode) {
 
 function nextLevel() {
     state.questionsInLevel = 0;
+    state.health = 5;          // 新一關回滿血
+    state.usedQuestions = [];  // 清空本關出題記錄
     updateUI();
     nextQuestion();
 }
 
 function nextQuestion() {
-    state.question = generateQuestion(state.level);
+    // 嘗試生成不重複的題目
+    let tries = 0;
+    let q;
+    do {
+        q = generateQuestion(state.level);
+        tries++;
+    } while (
+        state.usedQuestions.some(old => old.text === q.text) &&
+        tries < 20
+    );
+
+    state.question = q;
+    state.usedQuestions.push(q);
+
     document.getElementById('story-text').innerHTML = state.question.text;
     document.getElementById('math-text').innerText = ""; 
     document.getElementById('answer-input').value = "";
+    
+    updateUI(); // 更新頂部資訊
 }
 
 function checkAnswer() {
@@ -295,13 +305,21 @@ function handleCorrect() {
     }
 
     if (state.questionsInLevel >= state.maxQuestions) {
+        // 過關
         state.level++;
+        
+        // 清除 Combo 狀態
+        state.combo = 0;
+        state.isFever = false;
+        document.getElementById('game-container').classList.remove('combo-active');
+        document.getElementById('combo-msg').classList.add('hidden');
+
         if (state.level > 5) {
-            alert("恭喜！你已完成所有訓練！是時候考 DSE 了！");
+            alert("恭喜！你已完成所有 5 關訓練！是時候考 DSE 了！");
             resetToMenu();
             return;
         }
-        alert(`LEVEL ${state.level - 1} 完成！進入下一關！`);
+        alert(`Level ${state.level - 1} 完成！進入下一關！`);
         nextLevel();
     } else {
         nextQuestion();
@@ -325,19 +343,27 @@ function handleWrong(correctAnswer) {
         document.getElementById('feedback-overlay').classList.remove('damage-flash');
     }, 500);
 
-    // 顯示公式
     document.getElementById('math-text').innerHTML = 
         `❌ 錯誤！<br>正確答案: ${correctAnswer}<br>參考公式: <span style="color:#ffcc00">${state.question.formula}</span><br>生命值 -1`;
 
     if (state.health <= 0) {
-        alert("💀 勇者倒下了... 請重新挑戰本關！");
+        // 本關失敗，重置本關
+        alert(`💀 你在 Level ${state.level} 被打敗了！本關重新開始！`);
+        
         state.health = 5;
-        state.score = Math.max(0, state.score - 500);
-        state.questionsInLevel = 0; 
+        state.questionsInLevel = 0; // 歸零進度
+        state.usedQuestions = [];   // 清空已出題目，重新生成
+        
+        state.combo = 0;
+        state.isFever = false;
+        document.getElementById('game-container').classList.remove('combo-active');
+        document.getElementById('combo-msg').classList.add('hidden');
+        
+        nextQuestion(); // 馬上開始新的一題
+    } else {
+        updateUI();
+        setTimeout(nextQuestion, 4000); 
     }
-    
-    updateUI();
-    setTimeout(nextQuestion, 4000); 
 }
 
 function updateUI() {
@@ -348,8 +374,13 @@ function updateUI() {
     document.getElementById('health-display').innerText = hearts;
     document.getElementById('score-display').innerText = `分數: ${state.score}`;
     
+    const totalLevels = 5;
+    const levelsLeft = totalLevels - state.level;
     const times = ["早晨", "下午", "晚上", "深夜", "虛空"];
-    document.getElementById('level-display').innerText = `Level ${state.level} (${times[state.level-1] || '?'})`;
+    
+    // 更新頂部文字：Level X (剩餘 Y 關) | 本關進度 A/B
+    document.getElementById('level-display').innerText = 
+        `Level ${state.level} (${times[state.level-1] || '?'})｜本關 ${state.questionsInLevel}/${state.maxQuestions} 題 ｜餘下 ${levelsLeft} 關`;
 }
 
 function resetToMenu() {
@@ -385,10 +416,9 @@ function calcInput(val) {
 
 function calculateResult() {
     try {
-        // 支援隱藏乘號 (Implicit Multiplication)
         let evalStr = calcStr
-            .replace(/(\d)\(/g, '$1*(') // 5(2) -> 5*(2)
-            .replace(/\)(\d)/g, ')*$1') // )5 -> )*5
+            .replace(/(\d)\(/g, '$1*(') 
+            .replace(/\)(\d)/g, ')*$1') 
             .replace(/x\^y/g, '**')
             .replace(/\^/g, '**')
             .replace(/×/g, '*')
@@ -406,7 +436,7 @@ function calculateResult() {
     }
 }
 
-// === 計算機拖曳功能 (Drag & Drop) ===
+// === 計算機拖曳功能 ===
 const calcEl = document.getElementById("calculator");
 const headerEl = document.getElementById("calc-header");
 
@@ -476,7 +506,6 @@ document.getElementById('submit-btn').addEventListener('click', checkAnswer);
 document.getElementById('toggle-calc-btn').addEventListener('click', () => {
     const isHidden = calcEl.classList.toggle('hidden');
     if (!isHidden) {
-        // 每次打開都回到正中間
         calcEl.style.top = "50%";
         calcEl.style.left = "50%";
         calcEl.style.transform = "translate(-50%, -50%)";
