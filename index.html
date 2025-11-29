@@ -1,62 +1,56 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <!-- 手機／平板友善的 viewport 設定 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>利息闖關小遊戲（簡單利息與複利）</title>
-
-  <!-- 連結外部樣式表：負責版面選擇畫面、按鈕、返回鍵、答案輸入區與虛擬計算機樣式 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>利息勇者：惡龍討伐戰</title>
   <link rel="stylesheet" href="style.css">
-
-  <!-- 載入 p5.js（從 CDN）供 main.js 使用 -->
+  <!-- 載入 p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
-  <!-- 版面選擇畫面（只用 HTML / CSS 顯示） -->
-  <!-- 遊戲一開始會看到這個畫面，讓學生先選直向或橫向遊戲版面 -->
+  <!-- 版面選擇畫面 -->
   <div id="layout-select" class="center-panel">
-    <h1>利息闖關小遊戲</h1>
-    <p class="subtitle">簡單利息與複利練習（中三程度）</p>
+    <h1>⚔️ 利息勇者 ⚔️</h1>
+    <p class="subtitle">運用數學魔法擊敗利息惡龍！</p>
 
     <button class="layout-btn" onclick="startPortraitLayout()">
-      直向模式（手機）
+      📱 直向模式（手機）
     </button>
 
     <button class="layout-btn" onclick="startLandscapeLayout()">
-      橫向模式（平板／橫向手機）
+      💻 橫向模式（平板／電腦）
     </button>
 
-    <p class="hint">
-      每關 5 題，5 點生命。<br>
-      可直接輸入答案，或使用內置計算機（支援乘方）。
-    </p>
+    <div class="hint">
+      <p><strong>關卡說明：</strong></p>
+      <ul style="list-style: none; padding: 0; font-size: 0.85rem; text-align: left; display: inline-block;">
+        <li>Lv 1: 史萊姆（簡單利息）</li>
+        <li>Lv 2: 雙頭狼（每年複利）</li>
+        <li>Lv 3: 奇美拉（半年/季/月/日複利）</li>
+        <li>Lv 4: 惡龍王（逆向求本金/利率/年期）</li>
+      </ul>
+      <p style="margin-top:8px; color: #fbbf24;">答對攻擊，答錯受傷！</p>
+    </div>
   </div>
 
-  <!-- 返回按鈕：遊戲進行時顯示在畫面左上角，讓學生可以回到版面選擇畫面 -->
-  <!-- 這個按鈕會呼叫 main.js 中的 goBackToMenu() 函式，重設遊戲狀態 -->
+  <!-- 返回按鈕 -->
   <button id="backButton" onclick="goBackToMenu()">
-    ← 返回版面選擇
+    ⚔️ 逃跑 (返回)
   </button>
 
-  <!-- 答案輸入區：固定在畫面下方（直向／橫向通用），由 main.js 控制顯示／隱藏 -->
-  <!-- 學生可以直接輸入答案，或按「開啟計算機」使用虛擬計算機 -->
+  <!-- 答案輸入區 -->
   <div id="answer-panel">
-    <label for="answerInput" class="answer-label">
-      你的答案（四捨五入至最接近整數）：
-    </label>
-    <input id="answerInput" type="text" inputmode="decimal" autocomplete="off" placeholder="例如：12500">
-    <button id="submitAnswerBtn" onclick="submitTypedAnswer()">提交答案</button>
-    <button id="toggleCalcBtn" onclick="toggleCalculator()">開啟計算機</button>
+    <span class="answer-label">詠唱咒語（答案）：</span>
+    <input id="answerInput" type="text" inputmode="decimal" autocomplete="off" placeholder="輸入整數">
+    <button id="submitAnswerBtn" onclick="submitTypedAnswer()">🔥 攻擊！</button>
+    <button id="toggleCalcBtn" onclick="toggleCalculator()">🧮 魔法書</button>
   </div>
 
-  <!-- 虛擬計算機面板：由 JavaScript 控制顯示／隱藏 -->
-  <!-- 支援加減乘除與乘方（^），可把結果填回答案輸入框 -->
+  <!-- 虛擬計算機 -->
   <div id="calculator-panel">
     <div id="calc-header">
-      <span>利息計算機</span>
+      <span>魔法計算機</span>
       <button id="closeCalcBtn" onclick="toggleCalculator()">✕</button>
     </div>
     <div id="calc-display">0</div>
@@ -88,18 +82,18 @@
       <div class="calc-row">
         <button onclick="calcAppend('0')">0</button>
         <button onclick="calcAppend('.')">.</button>
-        <button onclick="calcAppend('^')">xʸ</button>
+        <button onclick="calcAppend('^')" title="次方 (例如 1.05^3)">xʸ</button>
         <button onclick="calcAppend('+')">＋</button>
       </div>
       <div class="calc-row">
+        <!-- 新增 log 按鈕，方便 Level 4 高手使用，雖然 S3 未必教 -->
+        <button onclick="calcAppend('log(')" style="font-size: 0.8rem;">log</button>
         <button class="calc-equal" onclick="calcEvaluate()">＝</button>
-        <button class="calc-fill" onclick="calcFillAnswer()">填入答案</button>
+        <button class="calc-fill" onclick="calcFillAnswer()">填入</button>
       </div>
     </div>
   </div>
 
-  <!-- 主要遊戲邏輯與 p5.js 畫布控制 -->
-  <!-- 必須在 p5.js 之後載入 -->
   <script src="main.js"></script>
 </body>
 </html>
